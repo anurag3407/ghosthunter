@@ -72,3 +72,25 @@ body {
   background: #8b5cf6;
   color: white;
 }
+
+/* Cell Ripple Animation for Background Ripple Effect */
+@keyframes cell-ripple {
+  0% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+}
+
+@theme inline {
+  --animate-cell-ripple: cell-ripple var(--duration, 500ms) ease-out var(--delay, 0ms);
+}
