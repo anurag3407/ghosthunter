@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { currentUser } from "@clerk/nextjs/server";
 import {
   Shield,
   Presentation,
@@ -71,9 +72,9 @@ const agents = [
 ];
 
 export default async function DashboardPage() {
-  // Development: Static greeting
-  // TODO: Get real user name in production
-  const firstName = "Developer";
+  // Get actual user from Clerk
+  const user = await currentUser();
+  const firstName = user?.firstName || "there";
 
   return (
     <div className="p-6 lg:p-8 space-y-8">

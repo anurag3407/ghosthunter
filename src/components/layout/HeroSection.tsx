@@ -52,7 +52,7 @@ export default function HeroSection() {
           <HoverBorderGradient
             containerClassName="rounded-full"
             as={Link}
-            href="/auth/signup"
+            href="/sign-up"
             className="bg-black text-white flex items-center space-x-2 px-6 py-2"
           >
             <span>Get started</span>

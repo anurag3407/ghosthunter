@@ -147,7 +147,7 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/auth/signup"
+              href="/sign-up"
               className="px-8 py-3.5 text-base font-medium text-violet-600 bg-white rounded-xl hover:bg-zinc-100 transition-all shadow-lg"
             >
               Start Free Trial

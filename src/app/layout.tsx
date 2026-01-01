@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
 import { Toaster } from "sonner";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -22,8 +24,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * Root Layout - Development Mode
- * NOTE: ClerkProvider removed for development. Re-enable for production.
+ * Root Layout with Clerk Authentication
+ * ClerkProvider wraps the entire app for authentication context.
  */
 export default function RootLayout({
   children,
@@ -31,18 +33,40 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark">
-      <body className={`${inter.variable} font-sans antialiased bg-black text-white`}>
-        <Providers>
-          {children}
-        </Providers>
-        <Toaster 
-          position="bottom-right" 
-          theme="dark"
-          richColors
-        />
-      </body>
-    </html>
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: "#8b5cf6",
+          colorBackground: "#18181b",
+          colorInputBackground: "#27272a",
+          colorInputText: "#ffffff",
+        },
+        elements: {
+          formButtonPrimary: "bg-violet-600 hover:bg-violet-700",
+          card: "bg-zinc-900 border-zinc-800",
+          headerTitle: "text-white",
+          headerSubtitle: "text-zinc-400",
+          socialButtonsBlockButton: "bg-zinc-800 border-zinc-700 hover:bg-zinc-700",
+          formFieldLabel: "text-zinc-300",
+          formFieldInput: "bg-zinc-800 border-zinc-700",
+          footerActionLink: "text-violet-400 hover:text-violet-300",
+        },
+      }}
+    >
+      <html lang="en" suppressHydrationWarning className="dark">
+        <body className={`${inter.variable} font-sans antialiased bg-black text-white`}>
+          <Providers>
+            {children}
+          </Providers>
+          <Toaster 
+            position="bottom-right" 
+            theme="dark"
+            richColors
+          />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
 

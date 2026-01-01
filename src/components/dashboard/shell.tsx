@@ -9,6 +9,7 @@
  */
 
 import { usePathname } from "next/navigation";
+import { UserButton } from "@clerk/nextjs";
 import {
   IconLayoutDashboard,
   IconShield,
@@ -16,7 +17,6 @@ import {
   IconCoins,
   IconDatabase,
   IconSettings,
-  IconUser,
   IconSparkles,
 } from "@tabler/icons-react";
 import { FloatingDock, DockItem } from "@/components/ui/floating-dock";
@@ -97,15 +97,19 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </span>
         </a>
         
-        {/* User avatar */}
-        <a
-          href="/dashboard/settings"
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-colors"
-        >
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center">
-            <IconUser className="w-4 h-4 text-white" />
-          </div>
-        </a>
+        {/* User Button from Clerk */}
+        <UserButton 
+          afterSignOutUrl="/"
+          appearance={{
+            elements: {
+              avatarBox: "w-9 h-9",
+              userButtonPopoverCard: "bg-zinc-900 border-zinc-800",
+              userButtonPopoverActionButton: "hover:bg-zinc-800",
+              userButtonPopoverActionButtonText: "text-zinc-300",
+              userButtonPopoverFooter: "hidden",
+            },
+          }}
+        />
       </header>
 
       {/* Main Content */}
@@ -120,3 +124,4 @@ export function DashboardShell({ children }: DashboardShellProps) {
     </div>
   );
 }
+
