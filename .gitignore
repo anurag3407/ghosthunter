@@ -36,6 +36,7 @@ yarn-error.log*
 # Firebase service account credentials (NEVER COMMIT THESE!)
 service-account.json
 service-account-*.json
+serviceAccount.json
 service_key.json
 **/service-account*.json
 **/service_key*.json

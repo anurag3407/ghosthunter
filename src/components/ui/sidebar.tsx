@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import React, { useState, createContext, useContext, useCallback, useRef } from "react";
+import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
@@ -86,39 +86,22 @@ export const DesktopSidebar = ({
   ...props
 }: React.ComponentProps<typeof motion.div>) => {
   const { open, setOpen, animate } = useSidebar();
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  const handleMouseEnter = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    setOpen(true);
-  }, [setOpen]);
-
-  const handleMouseLeave = useCallback(() => {
-    // Small delay to prevent flickering when mouse moves between elements
-    timeoutRef.current = setTimeout(() => {
-      setOpen(false);
-    }, 100);
-  }, [setOpen]);
-
   return (
     <motion.div
       className={cn(
-        "h-full px-4 py-4 hidden md:flex md:flex-col bg-zinc-950 border-r border-zinc-800 shrink-0 overflow-hidden",
+        "h-full px-4 py-4 hidden md:flex md:flex-col bg-zinc-950 border-r border-zinc-800 w-[280px] shrink-0",
         className
       )}
-      initial={false}
       animate={{
-        width: animate ? (open ? 280 : 72) : 280,
+        width: animate ? (open ? "280px" : "72px") : "280px",
       }}
-      transition={{ 
-        duration: 0.2, 
-        ease: [0.4, 0, 0.2, 1] // Smooth cubic bezier
+      transition={{
+        duration: 0.3,
+        ease: "easeInOut",
       }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
       {...props}
     >
       {children}
@@ -201,12 +184,11 @@ export const SidebarLink = ({
     >
       <span className="flex-shrink-0">{link.icon}</span>
       <motion.span
-        initial={false}
         animate={{
           display: animate ? (open ? "inline-block" : "none") : "inline-block",
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
-        transition={{ duration: 0.15 }}
+        transition={{ duration: 0.2 }}
         className="text-sm font-medium whitespace-pre"
       >
         {link.label}
