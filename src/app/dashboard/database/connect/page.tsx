@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -14,6 +14,7 @@ import {
   Zap,
   HardDrive,
   Link2,
+  Sparkles,
 } from "lucide-react";
 
 type DatabaseType = "postgresql" | "mysql" | "mongodb" | "supabase";
@@ -26,6 +27,35 @@ const databaseTypes = [
   { id: "supabase" as DatabaseType, name: "Supabase", color: "emerald", icon: "⚡" },
 ];
 
+// Auto-detect database type from connection string
+function detectDatabaseType(connectionString: string): DatabaseType | null {
+  const trimmed = connectionString.trim().toLowerCase();
+  
+  if (!trimmed) return null;
+  
+  // MongoDB detection
+  if (trimmed.startsWith("mongodb://") || trimmed.startsWith("mongodb+srv://")) {
+    return "mongodb";
+  }
+  
+  // Supabase detection
+  if (trimmed.includes("supabase.co") || trimmed.includes("supabase.com")) {
+    return "supabase";
+  }
+  
+  // PostgreSQL detection
+  if (trimmed.startsWith("postgres://") || trimmed.startsWith("postgresql://")) {
+    return "postgresql";
+  }
+  
+  // MySQL detection
+  if (trimmed.startsWith("mysql://")) {
+    return "mysql";
+  }
+  
+  return null;
+}
+
 export default function ConnectDatabasePage() {
   const router = useRouter();
   const [selectedType, setSelectedType] = useState<DatabaseType>("postgresql");
@@ -34,6 +64,7 @@ export default function ConnectDatabasePage() {
   
   // Connection string mode
   const [connectionString, setConnectionString] = useState("");
+  const [detectedType, setDetectedType] = useState<DatabaseType | null>(null);
   
   // Form mode
   const [host, setHost] = useState("");
@@ -46,6 +77,7 @@ export default function ConnectDatabasePage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "success" | "error">("idle");
+  const [testLatency, setTestLatency] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   const defaultPorts: Record<DatabaseType, string> = {
@@ -62,21 +94,36 @@ export default function ConnectDatabasePage() {
     supabase: "postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres",
   };
 
+  // Auto-detect database type when connection string changes
+  useEffect(() => {
+    if (connectionMode === "string" && connectionString) {
+      const detected = detectDatabaseType(connectionString);
+      setDetectedType(detected);
+      if (detected) {
+        setSelectedType(detected);
+      }
+    } else {
+      setDetectedType(null);
+    }
+  }, [connectionString, connectionMode]);
+
   const handleTypeChange = (type: DatabaseType) => {
     setSelectedType(type);
     setPort(defaultPorts[type]);
     setTestStatus("idle");
+    setTestLatency(null);
     setError("");
   };
 
   const handleTestConnection = async () => {
     setIsTesting(true);
     setTestStatus("idle");
+    setTestLatency(null);
     setError("");
 
     try {
       const body = connectionMode === "string"
-        ? { type: selectedType, connectionString }
+        ? { connectionString }
         : {
             type: selectedType,
             host,
@@ -94,11 +141,12 @@ export default function ConnectDatabasePage() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         throw new Error(data.error || "Connection failed");
       }
 
       setTestStatus("success");
+      setTestLatency(data.latency);
     } catch (err) {
       setTestStatus("error");
       setError(err instanceof Error ? err.message : "Connection test failed");
@@ -113,7 +161,7 @@ export default function ConnectDatabasePage() {
 
     try {
       const body = connectionMode === "string"
-        ? { name: connectionName, type: selectedType, connectionString }
+        ? { name: connectionName, type: detectedType || selectedType, connectionString }
         : {
             name: connectionName,
             type: selectedType,
@@ -147,6 +195,27 @@ export default function ConnectDatabasePage() {
     ? connectionName && connectionString
     : connectionName && host && port && database && username && password;
 
+  // Generate detection badge based on type
+  const getDetectionBadge = () => {
+    if (!detectedType) return null;
+    
+    const badges: Record<DatabaseType, { label: string; icon: string; color: string }> = {
+      supabase: { label: "Supabase Detected", icon: "⚡", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
+      mongodb: { label: "MongoDB Detected", icon: "🍃", color: "bg-green-500/20 text-green-400 border-green-500/30" },
+      postgresql: { label: "PostgreSQL Detected", icon: "🐘", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
+      mysql: { label: "MySQL Detected", icon: "🐬", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
+    };
+    
+    const badge = badges[detectedType];
+    
+    return (
+      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${badge.color} animate-in fade-in slide-in-from-left-2 duration-300`}>
+        <Sparkles className="w-3.5 h-3.5" />
+        <span className="text-sm font-medium">{badge.icon} {badge.label}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="p-6 lg:p-8 max-w-2xl mx-auto">
       {/* Header */}
@@ -171,27 +240,6 @@ export default function ConnectDatabasePage() {
 
       {/* Form */}
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 space-y-6">
-        {/* Database Type Selection */}
-        <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-3">Database Type</label>
-          <div className="grid grid-cols-4 gap-3">
-            {databaseTypes.map((type) => (
-              <button
-                key={type.id}
-                onClick={() => handleTypeChange(type.id)}
-                className={`p-4 rounded-xl border transition-all text-center ${
-                  selectedType === type.id
-                    ? "bg-green-500/10 border-green-500/30"
-                    : "bg-zinc-800/50 border-zinc-700 hover:border-zinc-600"
-                }`}
-              >
-                <span className="text-2xl mb-2 block">{type.icon}</span>
-                <span className="text-xs font-medium text-white">{type.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Connection Mode Toggle */}
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-3">Connection Method</label>
@@ -236,9 +284,12 @@ export default function ConnectDatabasePage() {
         {/* Connection String Mode */}
         {connectionMode === "string" && (
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
-              Connection String
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-zinc-300">
+                Connection String
+              </label>
+              {getDetectionBadge()}
+            </div>
             <textarea
               value={connectionString}
               onChange={(e) => setConnectionString(e.target.value)}
@@ -247,7 +298,7 @@ export default function ConnectDatabasePage() {
               className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
             />
             <p className="mt-2 text-xs text-zinc-500">
-              Paste your {selectedType === "supabase" ? "Supabase" : selectedType} connection string
+              Paste your connection string - we&apos;ll automatically detect the database type
             </p>
           </div>
         )}
@@ -255,6 +306,27 @@ export default function ConnectDatabasePage() {
         {/* Form Mode */}
         {connectionMode === "form" && (
           <>
+            {/* Database Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-3">Database Type</label>
+              <div className="grid grid-cols-4 gap-3">
+                {databaseTypes.map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => handleTypeChange(type.id)}
+                    className={`p-4 rounded-xl border transition-all text-center ${
+                      selectedType === type.id
+                        ? "bg-green-500/10 border-green-500/30"
+                        : "bg-zinc-800/50 border-zinc-700 hover:border-zinc-600"
+                    }`}
+                  >
+                    <span className="text-2xl mb-2 block">{type.icon}</span>
+                    <span className="text-xs font-medium text-white">{type.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Host & Port */}
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-2">
@@ -330,6 +402,7 @@ export default function ConnectDatabasePage() {
           <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-2 text-green-400">
             <CheckCircle2 className="w-5 h-5" />
             Connection successful!
+            {testLatency && <span className="text-green-400/70 text-sm">({testLatency}ms)</span>}
           </div>
         )}
 
@@ -381,3 +454,4 @@ export default function ConnectDatabasePage() {
     </div>
   );
 }
+

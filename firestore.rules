@@ -1,0 +1,116 @@
+rules_version = '2';
+
+/**
+ * ============================================================================
+ * FIRESTORE SECURITY RULES - GHOSTFOUNDER
+ * ============================================================================
+ * Multi-user security rules ensuring users can only access their own data.
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ========================================================================
+    // USERS COLLECTION
+    // ========================================================================
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if false; // Users cannot delete their own profile
+    }
+    
+    // ========================================================================
+    // DATABASE CONNECTIONS
+    // ========================================================================
+    match /database_connections/{connectionId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // ========================================================================
+    // DATABASE CONVERSATIONS
+    // ========================================================================
+    match /database_conversations/{conversationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && get(/databases/$(database)/documents/database_conversations/$(conversationId)).data.userId == request.auth.uid;
+        allow create: if isAuthenticated() && get(/databases/$(database)/documents/database_conversations/$(conversationId)).data.userId == request.auth.uid;
+        allow update: if false; // Messages are immutable
+        allow delete: if isAuthenticated() && get(/databases/$(database)/documents/database_conversations/$(conversationId)).data.userId == request.auth.uid;
+      }
+    }
+    
+    // ========================================================================
+    // PITCH DECKS
+    // ========================================================================
+    match /pitchDecks/{deckId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // ========================================================================
+    // EQUITY PROJECTS
+    // ========================================================================
+    match /equity_projects/{projectId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // ========================================================================
+    // CODE POLICE PROJECTS
+    // ========================================================================
+    match /code_police_projects/{projectId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Analysis results subcollection
+      match /analyses/{analysisId} {
+        allow read: if isAuthenticated() && get(/databases/$(database)/documents/code_police_projects/$(projectId)).data.userId == request.auth.uid;
+        allow create: if isAuthenticated() && get(/databases/$(database)/documents/code_police_projects/$(projectId)).data.userId == request.auth.uid;
+        allow update: if false; // Analyses are immutable
+        allow delete: if isAuthenticated() && get(/databases/$(database)/documents/code_police_projects/$(projectId)).data.userId == request.auth.uid;
+      }
+    }
+    
+    // ========================================================================
+    // GITHUB CONNECTIONS
+    // ========================================================================
+    match /github_connections/{connectionId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // ========================================================================
+    // DENY ALL OTHER ACCESS
+    // ========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

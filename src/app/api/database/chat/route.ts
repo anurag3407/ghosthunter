@@ -7,8 +7,16 @@ import {
   userOwnsConversation,
   updateConversationTitle,
 } from "@/lib/agents/database/conversations";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { generateQueryResponse, type HistoryItem } from "@/lib/agents/database/agent";
+import { decrypt } from "@/lib/agents/database/encryption";
+import { executeQuery, formatQueryResults } from "@/lib/agents/database/query-executor";
+
+/**
+ * ============================================================================
+ * DATABASE AGENT - CHAT ENDPOINT (ENHANCED)
+ * ============================================================================
+ * Uses the Universal Agent Engine with encrypted connection strings.
+ */
 
 /**
  * GET /api/database/chat?conversationId=xxx
@@ -52,7 +60,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/database/chat
- * Send a message and get AI response
+ * Send a message and get AI response with query generation
  */
 export async function POST(request: NextRequest) {
   try {
@@ -98,51 +106,91 @@ export async function POST(request: NextRequest) {
 
     const connection = connectionDoc.data()!;
 
+    // Verify user owns this connection
+    if (connection.userId !== userId) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
     // Add user message
     await addMessage(conversationId, "user", message);
 
     // Get previous messages for context
     const previousMessages = await getConversationMessages(conversationId);
+    
+    // Convert to HistoryItem format for agent
+    const history: HistoryItem[] = previousMessages.slice(-5).map(m => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
 
-    // Build context for AI
-    const systemPrompt = `You are a helpful database assistant. The user is connected to a ${connection.type} database named "${connection.database}".
+    // Decrypt connection string
+    let connectionString: string;
+    
+    if (connection.encryptedUri) {
+      // New format: encrypted connection string
+      connectionString = decrypt(connection.encryptedUri);
+    } else if (connection.encryptedCredentials) {
+      // Legacy format: encrypted credentials object - build connection string
+      const creds = JSON.parse(decrypt(connection.encryptedCredentials));
+      if (connection.type === "mongodb") {
+        connectionString = `mongodb://${creds.username}:${encodeURIComponent(creds.password)}@${creds.host}:${creds.port}/${creds.database}`;
+      } else {
+        connectionString = `postgresql://${creds.username}:${encodeURIComponent(creds.password)}@${creds.host}:${creds.port}/${creds.database}`;
+      }
+    } else {
+      return NextResponse.json(
+        { error: "Connection credentials not found" },
+        { status: 400 }
+      );
+    }
 
-Your job is to:
-1. Understand the user's natural language query
-2. Generate the appropriate SQL/Query for their database type
-3. Explain what the query does
+    // Generate query using Universal Agent
+    const agentResponse = await generateQueryResponse(message, connectionString, history);
 
-Database type: ${connection.type}
-Database name: ${connection.database}
+    // Format response message
+    let assistantMessage: string;
+    let queryResults: Record<string, unknown>[] | null = null;
+    
+    if (agentResponse.type === "blocked") {
+      assistantMessage = `⚠️ **Safety Block**\n\n${agentResponse.content}`;
+      if (agentResponse.warnings?.length) {
+        assistantMessage += `\n\n**Reason:** ${agentResponse.warnings.join(", ")}`;
+      }
+    } else if (agentResponse.type === "error") {
+      assistantMessage = `❌ **Error**\n\n${agentResponse.content}`;
+    } else if (agentResponse.type === "clarification") {
+      assistantMessage = agentResponse.content;
+    } else {
+      // Query type - generate AND execute the query
+      assistantMessage = agentResponse.explanation || agentResponse.content;
+      
+      if (agentResponse.query) {
+        const queryLang = connection.type === "mongodb" ? "json" : "sql";
+        assistantMessage += `\n\n**Generated Query:**\n\`\`\`${queryLang}\n${agentResponse.query}\n\`\`\``;
+        
+        // Execute the query
+        try {
+          const result = await executeQuery(connectionString, agentResponse.query);
+          queryResults = result.data;
+          
+          // Add execution results to message
+          assistantMessage += `\n\n${formatQueryResults(result)}`;
+        } catch (execError) {
+          assistantMessage += `\n\n❌ **Execution Error**: ${execError instanceof Error ? execError.message : "Failed to execute query"}`;
+        }
+      }
+      
+      if (agentResponse.assumptions?.length) {
+        assistantMessage += `\n\n**Assumptions:**\n${agentResponse.assumptions.map(a => `- ${a}`).join("\n")}`;
+      }
+      
+      if (agentResponse.warnings?.length) {
+        assistantMessage += `\n\n**⚠️ Warnings:**\n${agentResponse.warnings.map(w => `- ${w}`).join("\n")}`;
+      }
+    }
 
-When responding:
-- Always provide the generated query in a code block
-- Explain what the query does
-- If you're unsure about the schema, ask clarifying questions
-
-Previous conversation context:
-${previousMessages.slice(-6).map(m => `${m.role}: ${m.content}`).join('\n')}`;
-
-    // Call AI
-    const model = new ChatGoogleGenerativeAI({
-      model: "gemini-2.0-flash",
-      apiKey: process.env.GOOGLE_AI_API_KEY,
-      temperature: 0.3,
-    });
-
-    const response = await model.invoke([
-      new SystemMessage(systemPrompt),
-      new HumanMessage(message),
-    ]);
-
-    const assistantMessage = response.content as string;
-
-    // Extract SQL query if present
-    const queryMatch = assistantMessage.match(/```(?:sql|javascript|js)?\n?([\s\S]*?)```/);
-    const generatedQuery = queryMatch ? queryMatch[1].trim() : undefined;
-
-    // Add assistant message
-    await addMessage(conversationId, "assistant", assistantMessage, generatedQuery);
+    // Add assistant message to conversation
+    await addMessage(conversationId, "assistant", assistantMessage, agentResponse.query || undefined);
 
     // Update conversation title if it's the first message
     if (previousMessages.length <= 1) {
@@ -150,15 +198,25 @@ ${previousMessages.slice(-6).map(m => `${m.role}: ${m.content}`).join('\n')}`;
       await updateConversationTitle(conversationId, title);
     }
 
+    // Update connection last used
+    await adminDb
+      .collection("database_connections")
+      .doc(connectionId)
+      .update({ lastUsedAt: new Date() });
+
     return NextResponse.json({
       message: assistantMessage,
-      query: generatedQuery,
+      query: agentResponse.query,
+      results: queryResults,
+      type: agentResponse.type,
+      warnings: agentResponse.warnings,
     });
   } catch (error) {
     console.error("Error processing chat:", error);
     return NextResponse.json(
-      { error: "Failed to process message" },
+      { error: error instanceof Error ? error.message : "Failed to process message" },
       { status: 500 }
     );
   }
 }
+

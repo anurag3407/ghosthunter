@@ -23,9 +23,16 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  query?: string;
+  query?: string | Record<string, unknown>;
   results?: Record<string, unknown>[];
   timestamp: Date;
+}
+
+// Helper to safely convert query to string for rendering
+function stringifyQuery(query: string | Record<string, unknown> | undefined): string {
+  if (!query) return "";
+  if (typeof query === "string") return query;
+  return JSON.stringify(query, null, 2);
 }
 
 interface Conversation {
@@ -370,9 +377,9 @@ export default function DatabaseChatPage({ params }: { params: Promise<{ id: str
                       {message.query && (
                         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-medium text-zinc-500">Generated SQL</span>
+                            <span className="text-xs font-medium text-zinc-500">Generated Query</span>
                             <button
-                              onClick={() => handleCopy(message.query!, message.id + "-query")}
+                              onClick={() => handleCopy(stringifyQuery(message.query), message.id + "-query")}
                               className="text-zinc-400 hover:text-white"
                             >
                               {copiedId === message.id + "-query" ? (
@@ -382,7 +389,7 @@ export default function DatabaseChatPage({ params }: { params: Promise<{ id: str
                               )}
                             </button>
                           </div>
-                          <code className="text-sm text-green-400 font-mono whitespace-pre-wrap">{message.query}</code>
+                          <code className="text-sm text-green-400 font-mono whitespace-pre-wrap">{stringifyQuery(message.query)}</code>
                         </div>
                       )}
                     </>

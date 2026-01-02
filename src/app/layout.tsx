@@ -34,6 +34,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
       appearance={{
         baseTheme: dark,
         variables: {
@@ -54,7 +56,7 @@ export default function RootLayout({
         },
       }}
     >
-      <html lang="en" suppressHydrationWarning className="dark">
+      <html lang="en" suppressHydrationWarning className="dark" data-scroll-behavior="smooth">
         <body className={`${inter.variable} font-sans antialiased bg-black text-white`}>
           <Providers>
             {children}
