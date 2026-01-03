@@ -97,6 +97,14 @@ export const AGENTS: AgentConfig[] = [
 // CODE POLICE TYPES
 // ============================================================================
 
+/**
+ * Project status for Vercel-style controls:
+ * - active: Analyzing every push
+ * - paused: Webhooks received but ignored
+ * - stopped: Webhook removed, no analysis
+ */
+export type ProjectStatus = 'active' | 'paused' | 'stopped';
+
 export interface Project {
   id: string;
   userId: string;
@@ -109,7 +117,14 @@ export interface Project {
   language?: string;
   webhookId?: number;
   webhookSecret: string;
-  isActive: boolean;
+  /** @deprecated Use status instead */
+  isActive?: boolean;
+  /** Vercel-style project status */
+  status: ProjectStatus;
+  /** User-defined custom rules for AI analysis (e.g., "No console.logs") */
+  customRules: string[];
+  /** Project owner email for notifications */
+  ownerEmail: string;
   rulesProfile: RulesProfile;
   notificationPrefs: NotificationPrefs;
   createdAt: Timestamp;

@@ -27,6 +27,7 @@ interface Project {
   githubFullName: string;
   language: string | null;
   isActive: boolean;
+  status: 'active' | 'paused' | 'stopped';
   createdAt: Date;
 }
 
@@ -64,7 +65,8 @@ export default async function CodePolicePage() {
         name: data.name,
         githubFullName: data.githubFullName,
         language: data.language,
-        isActive: data.isActive,
+        isActive: data.isActive ?? true,
+        status: data.status || 'active',
         createdAt: data.createdAt?.toDate?.() || new Date(),
       };
     });
@@ -198,6 +200,17 @@ function ProjectCard({
     return date.toLocaleDateString();
   };
 
+  const getProjectStatusStyle = (status: 'active' | 'paused' | 'stopped') => {
+    switch (status) {
+      case 'active':
+        return 'bg-green-500/10 text-green-400';
+      case 'paused':
+        return 'bg-yellow-500/10 text-yellow-400';
+      case 'stopped':
+        return 'bg-red-500/10 text-red-400';
+    }
+  };
+
   return (
     <Link
       href={`/dashboard/code-police/${project.id}`}
@@ -208,9 +221,14 @@ function ProjectCard({
           <GitBranch className="w-5 h-5 text-zinc-400" />
         </div>
         <div>
-          <h3 className="font-semibold text-white group-hover:text-red-400 transition-colors">
-            {project.name}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-white group-hover:text-red-400 transition-colors">
+              {project.name}
+            </h3>
+            <span className={`px-2 py-0.5 text-xs font-medium rounded-full capitalize ${getProjectStatusStyle(project.status)}`}>
+              {project.status}
+            </span>
+          </div>
           <p className="text-sm text-zinc-500">{project.githubFullName}</p>
         </div>
       </div>

@@ -7,8 +7,8 @@ import {
   generateAnalysisSummary,
 } from "@/lib/agents/code-police/analyzer";
 import { sendAnalysisReport } from "@/lib/agents/code-police/email";
-import { fetchCommit, fetchFileContent } from "@/lib/agents/code-police/github";
-import type { CodeIssue, IssueSeverity } from "@/types";
+import { fetchCommit, fetchFileContent, postPRComment, formatPRComment, getDependentFiles } from "@/lib/agents/code-police/github";
+import type { CodeIssue, IssueSeverity, ProjectStatus } from "@/types";
 
 /**
  * ============================================================================
@@ -116,9 +116,23 @@ export async function POST(request: NextRequest) {
       id: string; 
       userId: string; 
       webhookSecret?: string;
+      status?: ProjectStatus;
+      customRules?: string[];
+      ownerEmail?: string;
       notificationPrefs?: { emailOnPush?: boolean; additionalEmails?: string[] };
       [key: string]: unknown;
     };
+
+    // Check project status (Vercel-style controls)
+    const projectStatus = project.status || 'active';
+    if (projectStatus === 'paused') {
+      console.log(`[Webhook] Project ${project.id} is paused, skipping analysis`);
+      return NextResponse.json({ message: 'Project paused, skipping analysis' });
+    }
+    if (projectStatus === 'stopped') {
+      console.log(`[Webhook] Project ${project.id} is stopped`);
+      return NextResponse.json({ error: 'Project stopped' }, { status: 404 });
+    }
 
     // Verify signature
     const webhookSecret = project.webhookSecret;
@@ -200,17 +214,35 @@ async function handlePushEvent(
     const commit = await fetchCommit(githubToken, owner, repo, commitSha);
     const allIssues: Omit<CodeIssue, "id" | "analysisRunId" | "projectId" | "isMuted">[] = [];
 
+    // Get custom rules from project settings
+    const customRules = (project.customRules as string[] | undefined) || [];
+
     for (const file of commit.files) {
       if (file.status === "removed") continue;
 
       const content = await fetchFileContent(githubToken, owner, repo, file.filename, commitSha);
       const language = detectLanguage(file.filename);
 
+      // Get dependent files for graph-aware analysis (optional, may fail due to rate limits)
+      let dependentContext = '';
+      try {
+        const dependentFiles = await getDependentFiles(githubToken, owner, repo, file.filename);
+        if (dependentFiles.length > 0) {
+          dependentContext = dependentFiles
+            .map(df => `- ${df.path}:\n${df.snippet}`)
+            .join('\n\n');
+        }
+      } catch (err) {
+        console.warn("Graph-aware analysis skipped:", err);
+      }
+
       const issues = await analyzeCode({
         code: content,
         filePath: file.filename,
         language,
         commitMessage: commit.commit.message,
+        customRules,
+        dependentContext: dependentContext || undefined,
       });
 
       allIssues.push(...issues);
@@ -339,9 +371,12 @@ async function handlePREvent(
   });
 
   try {
-    // Similar analysis as push event
+    // Similar analysis as push event but with PR comment output
     const commit = await fetchCommit(githubToken, owner, repo, commitSha);
     const allIssues: Omit<CodeIssue, "id" | "analysisRunId" | "projectId" | "isMuted">[] = [];
+
+    // Get custom rules from project settings
+    const customRules = (project.customRules as string[] | undefined) || [];
 
     for (const file of commit.files) {
       if (file.status === "removed") continue;
@@ -349,11 +384,26 @@ async function handlePREvent(
       const content = await fetchFileContent(githubToken, owner, repo, file.filename, commitSha);
       const language = detectLanguage(file.filename);
 
+      // Get dependent files for graph-aware analysis
+      let dependentContext = '';
+      try {
+        const dependentFiles = await getDependentFiles(githubToken, owner, repo, file.filename);
+        if (dependentFiles.length > 0) {
+          dependentContext = dependentFiles
+            .map(df => `- ${df.path}:\n${df.snippet}`)
+            .join('\n\n');
+        }
+      } catch (err) {
+        console.warn("Graph-aware analysis skipped:", err);
+      }
+
       const issues = await analyzeCode({
         code: content,
         filePath: file.filename,
         language,
         commitMessage: pr.title,
+        customRules,
+        dependentContext: dependentContext || undefined,
       });
 
       allIssues.push(...issues);
@@ -388,6 +438,16 @@ async function handlePREvent(
       issueCounts,
       summary,
     });
+
+    // Post PR comment (not email) for pull requests
+    try {
+      const commentBody = formatPRComment(fullIssues, commitSha);
+      await postPRComment(githubToken, owner, repo, payload.number, commentBody);
+      console.log(`[Webhook] Posted PR comment for PR #${payload.number}`);
+    } catch (commentError) {
+      console.error("Failed to post PR comment:", commentError);
+    }
+
   } catch (error) {
     console.error("PR event analysis failed:", error);
     await analysisRef.update({

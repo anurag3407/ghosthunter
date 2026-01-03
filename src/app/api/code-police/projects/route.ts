@@ -84,7 +84,12 @@ export async function POST(request: NextRequest) {
     // Generate webhook secret
     const webhookSecret = crypto.randomUUID();
 
-    // Create project
+    // Get user email for notifications
+    const userDoc = await adminDb.collection("users").doc(userId).get();
+    const userData = userDoc.data();
+    const ownerEmail = userData?.email || "";
+
+    // Create project with Vercel-style status and custom rules
     const projectRef = adminDb.collection("projects").doc();
     const project = {
       id: projectRef.id,
@@ -97,6 +102,11 @@ export async function POST(request: NextRequest) {
       defaultBranch: defaultBranch || "main",
       language: language || null,
       webhookSecret,
+      // New Vercel-style fields
+      status: "active" as const,
+      customRules: [] as string[],
+      ownerEmail,
+      // Legacy field for backwards compatibility
       isActive: true,
       rulesProfile: {
         strictness: "moderate",
@@ -113,7 +123,7 @@ export async function POST(request: NextRequest) {
       },
       notificationPrefs: {
         emailOnPush: true,
-        emailOnPR: true,
+        emailOnPR: false, // PRs get comments, not emails
         minSeverity: "medium",
         additionalEmails: [],
       },

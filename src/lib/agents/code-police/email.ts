@@ -102,23 +102,67 @@ function generateReportHtml(input: {
     info: "#6b7280",
   };
 
-  const issueRows = issues
-    .slice(0, 20) // Limit to 20 issues in email
+  const severityEmoji: Record<IssueSeverity, string> = {
+    critical: "🔴",
+    high: "🟠",
+    medium: "🟡",
+    low: "🔵",
+    info: "ℹ️",
+  };
+
+  /**
+   * Format code snippet with VS Code-style dark theme
+   */
+  const formatCodeSnippet = (snippet: string | undefined): string => {
+    if (!snippet) return '';
+    
+    // Escape HTML entities
+    const escaped = snippet
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    
+    return `
+      <div style="margin-top: 12px; border-radius: 8px; overflow: hidden; border: 1px solid #3c3c3c;">
+        <div style="background-color: #252526; padding: 8px 12px; border-bottom: 1px solid #3c3c3c;">
+          <span style="color: #858585; font-size: 11px; font-family: 'SF Mono', Consolas, monospace;">Code Snippet</span>
+        </div>
+        <pre style="margin: 0; padding: 16px; background-color: #1e1e1e; overflow-x: auto;"><code style="color: #d4d4d4; font-size: 13px; font-family: 'SF Mono', 'Fira Code', Consolas, 'Courier New', monospace; line-height: 1.5; white-space: pre;">${escaped}</code></pre>
+      </div>
+    `;
+  };
+
+  // Generate detailed issue cards with code snippets
+  const issueCards = issues
+    .slice(0, 10) // Limit to 10 detailed issues in email
     .map(
       (issue) => `
-        <tr>
-          <td style="padding: 12px; border-bottom: 1px solid #27272a;">
-            <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; color: white; background-color: ${severityColors[issue.severity]};">
-              ${issue.severity.toUpperCase()}
+        <div style="background-color: #1f1f23; border: 1px solid #27272a; border-left: 4px solid ${severityColors[issue.severity]}; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span style="font-size: 16px;">${severityEmoji[issue.severity]}</span>
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; color: white; background-color: ${severityColors[issue.severity]}; text-transform: uppercase;">
+              ${issue.severity}
             </span>
-          </td>
-          <td style="padding: 12px; border-bottom: 1px solid #27272a; color: #a1a1aa;">
-            ${issue.filePath}:${issue.line}
-          </td>
-          <td style="padding: 12px; border-bottom: 1px solid #27272a; color: #fafafa;">
+            <span style="color: #71717a; font-size: 12px; text-transform: capitalize;">${issue.category}</span>
+          </div>
+          <h3 style="color: #fafafa; font-size: 15px; font-weight: 600; margin: 0 0 8px 0;">
             ${issue.message}
-          </td>
-        </tr>
+          </h3>
+          <p style="color: #71717a; font-size: 13px; margin: 0 0 8px 0; font-family: 'SF Mono', Consolas, monospace;">
+            📁 ${issue.filePath}:${issue.line}${issue.endLine ? `-${issue.endLine}` : ''}
+          </p>
+          <p style="color: #a1a1aa; font-size: 14px; line-height: 1.5; margin: 0;">
+            ${issue.explanation}
+          </p>
+          ${formatCodeSnippet(issue.codeSnippet)}
+          ${issue.suggestedFix ? `
+            <div style="margin-top: 12px; padding: 12px; background-color: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.2); border-radius: 6px;">
+              <p style="color: #4ade80; font-size: 13px; margin: 0;">
+                <strong>💡 Suggested Fix:</strong> ${issue.suggestedFix}
+              </p>
+            </div>
+          ` : ''}
+        </div>
       `
     )
     .join("");
@@ -170,30 +214,16 @@ function generateReportHtml(input: {
               .join("")}
           </div>
 
-          <!-- Issues Table -->
+          <!-- Issues List -->
           ${issues.length > 0 ? `
-            <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
-              <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                  <tr style="background-color: #27272a;">
-                    <th style="padding: 12px; text-align: left; color: #a1a1aa; font-size: 12px; text-transform: uppercase;">
-                      Severity
-                    </th>
-                    <th style="padding: 12px; text-align: left; color: #a1a1aa; font-size: 12px; text-transform: uppercase;">
-                      Location
-                    </th>
-                    <th style="padding: 12px; text-align: left; color: #a1a1aa; font-size: 12px; text-transform: uppercase;">
-                      Issue
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${issueRows}
-                </tbody>
-              </table>
-              ${issues.length > 20 ? `
-                <div style="padding: 12px; text-align: center; color: #71717a; font-size: 14px;">
-                  ... and ${issues.length - 20} more issues
+            <div style="margin-bottom: 24px;">
+              <h2 style="color: #fafafa; font-size: 16px; margin: 0 0 16px 0;">
+                🔍 Issues Found (${issues.length})
+              </h2>
+              ${issueCards}
+              ${issues.length > 10 ? `
+                <div style="padding: 16px; text-align: center; color: #71717a; font-size: 14px; background-color: #18181b; border: 1px solid #27272a; border-radius: 8px;">
+                  ... and ${issues.length - 10} more issues. View full report on the dashboard.
                 </div>
               ` : ""}
             </div>

@@ -46,13 +46,14 @@ function getGeminiModel(temperature: number = 0) {
   });
 }
 
-// Static analysis prompt template
+// Static analysis prompt template with custom rules support
 const ANALYSIS_PROMPT = `You are a senior code reviewer with expertise in security, performance, and code quality. Analyze the following code for issues.
 
 **File:** {filePath}
 **Language:** {language}
 **Commit Message:** {commitMessage}
-
+{customRulesSection}
+{dependentContextSection}
 **Code to analyze:**
 \`\`\`{language}
 {code}
@@ -71,6 +72,7 @@ const ANALYSIS_PROMPT = `You are a senior code reviewer with expertise in securi
 - Provide actionable fix suggestions
 - If no issues found, return an empty array
 - Focus on substantive issues, not style nitpicks
+- CRITICAL: If custom rules are provided above, treat them as HIGH PRIORITY constraints
 
 Return your analysis as a JSON object with an "issues" array. Each issue should have: severity, category, message, line, explanation, and optionally suggestedFix and ruleId.`;
 
@@ -98,16 +100,55 @@ Generate a 2-3 paragraph summary that:
 Keep the tone professional but friendly. Be concise.`;
 
 /**
+ * Format custom rules section for the prompt
+ */
+function formatCustomRulesSection(customRules?: string[]): string {
+  if (!customRules || customRules.length === 0) return '';
+  
+  const rulesText = customRules
+    .map((rule, i) => `  ${i + 1}. ${rule}`)
+    .join('\n');
+  
+  return `
+**🚨 CUSTOM RULES (HIGH PRIORITY):**
+The project owner has defined the following rules that MUST be enforced:
+${rulesText}
+
+Violations of these custom rules should be marked as HIGH severity.
+`;
+}
+
+/**
+ * Format dependent context section for graph-aware analysis
+ */
+function formatDependentContextSection(dependentContext?: string): string {
+  if (!dependentContext) return '';
+  
+  return `
+**📦 DEPENDENT FILES CONTEXT:**
+The following files import or depend on the file being analyzed. Consider how changes might affect them:
+${dependentContext}
+`;
+}
+
+/**
  * Analyze a code chunk for issues
+ * @param input.customRules - Optional array of user-defined rules to enforce
+ * @param input.dependentContext - Optional context about files that import this file
  */
 export async function analyzeCode(input: {
   code: string;
   filePath: string;
   language: string;
   commitMessage: string;
+  customRules?: string[];
+  dependentContext?: string;
 }): Promise<Omit<CodeIssue, "id" | "analysisRunId" | "projectId" | "isMuted">[]> {
   const model = getGeminiModel(0);
   const structuredModel = model.withStructuredOutput(AnalysisOutputSchema);
+
+  const customRulesSection = formatCustomRulesSection(input.customRules);
+  const dependentContextSection = formatDependentContextSection(input.dependentContext);
 
   const prompt = PromptTemplate.fromTemplate(ANALYSIS_PROMPT);
   const formattedPrompt = await prompt.format({
@@ -115,6 +156,8 @@ export async function analyzeCode(input: {
     language: input.language,
     commitMessage: input.commitMessage,
     code: input.code,
+    customRulesSection,
+    dependentContextSection,
   });
 
   try {

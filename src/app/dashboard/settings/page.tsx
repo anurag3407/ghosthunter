@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { UserProfile, useUser } from "@clerk/nextjs";
 import {
   Settings,
   User,
@@ -13,22 +14,16 @@ import {
   Moon,
   Check,
   Loader2,
-  X,
+  ExternalLink,
 } from "lucide-react";
 
 /**
  * ============================================================================
  * SETTINGS PAGE
  * ============================================================================
- * User settings and account management with GitHub OAuth.
+ * User settings and account management.
+ * GitHub OAuth is managed through Clerk's UserProfile component.
  */
-
-interface GitHubConnection {
-  connected: boolean;
-  username?: string;
-  avatar_url?: string;
-  connected_at?: string;
-}
 
 // Wrapper component to handle Suspense for useSearchParams
 export default function SettingsPage() {
@@ -49,41 +44,18 @@ function SettingsLoading() {
 
 function SettingsContent() {
   const searchParams = useSearchParams();
-  const [githubStatus, setGithubStatus] = useState<GitHubConnection>({ connected: false });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const { user, isLoaded } = useUser();
+  const [showAccountModal, setShowAccountModal] = useState(false);
   const justConnected = searchParams.get("github_connected") === "true";
+  
+  // Check if GitHub is connected via Clerk
+  const githubAccount = user?.externalAccounts?.find(
+    (account) => account.provider === "github"
+  );
+  const isGithubConnected = !!githubAccount;
 
-  useEffect(() => {
-    fetchGitHubStatus();
-  }, []);
-
-  const fetchGitHubStatus = async () => {
-    try {
-      const response = await fetch("/api/auth/github/status");
-      const data = await response.json();
-      setGithubStatus(data);
-    } catch (error) {
-      console.error("Error fetching GitHub status:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleConnectGitHub = () => {
-    window.location.href = "/api/auth/github?returnTo=/dashboard/settings";
-  };
-
-  const handleDisconnectGitHub = async () => {
-    setIsDisconnecting(true);
-    try {
-      await fetch("/api/auth/github/status", { method: "DELETE" });
-      setGithubStatus({ connected: false });
-    } catch (error) {
-      console.error("Error disconnecting GitHub:", error);
-    } finally {
-      setIsDisconnecting(false);
-    }
+  const handleManageAccount = () => {
+    setShowAccountModal(true);
   };
 
   return (
@@ -109,88 +81,100 @@ function SettingsContent() {
         </div>
       )}
 
-      {/* Profile Section */}
+      {/* Profile Section with Clerk UserProfile */}
       <section className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
         <div className="flex items-center gap-3 mb-6">
           <User className="w-5 h-5 text-zinc-400" />
-          <h2 className="text-lg font-semibold text-white">Profile</h2>
+          <h2 className="text-lg font-semibold text-white">Profile & Connected Accounts</h2>
         </div>
 
         <div className="flex items-center gap-6 mb-6">
-          {githubStatus.avatar_url ? (
+          {user?.imageUrl ? (
             <img
-              src={githubStatus.avatar_url}
+              src={user.imageUrl}
               alt="Profile"
               className="w-20 h-20 rounded-full"
             />
           ) : (
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center">
               <span className="text-2xl font-bold text-white">
-                {githubStatus.username?.[0]?.toUpperCase() || "D"}
+                {user?.firstName?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || "U"}
               </span>
             </div>
           )}
           <div>
             <h3 className="text-xl font-semibold text-white">
-              {githubStatus.username || "Development User"}
+              {user?.fullName || user?.username || "User"}
             </h3>
             <p className="text-zinc-400">
-              {githubStatus.connected 
-                ? `Connected to GitHub as @${githubStatus.username}`
-                : "Connect GitHub to get started"}
+              {user?.primaryEmailAddress?.emailAddress}
             </p>
           </div>
         </div>
+
+        <button
+          onClick={handleManageAccount}
+          className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors flex items-center gap-2"
+        >
+          <ExternalLink className="w-4 h-4" />
+          Manage Account
+        </button>
       </section>
 
-      {/* Integrations Section */}
+      {/* GitHub Integration Status */}
       <section className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
         <div className="flex items-center gap-3 mb-6">
           <Github className="w-5 h-5 text-zinc-400" />
-          <h2 className="text-lg font-semibold text-white">Integrations</h2>
+          <h2 className="text-lg font-semibold text-white">GitHub Integration</h2>
         </div>
 
-        <div className="grid gap-4">
-          <div className="flex items-center justify-between py-3 border-b border-zinc-800">
-            <div className="flex items-center gap-4">
-              <div className="p-2 rounded-lg bg-zinc-800">
-                <Github className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="font-medium text-white">GitHub</p>
-                <p className="text-sm text-zinc-500">
-                  {githubStatus.connected
-                    ? `Connected as @${githubStatus.username}`
-                    : "Connect for Code Police and Pitch Deck"}
-                </p>
-              </div>
+        <div className="flex items-center justify-between py-3 border-b border-zinc-800">
+          <div className="flex items-center gap-4">
+            <div className="p-2 rounded-lg bg-zinc-800">
+              <Github className="w-5 h-5 text-white" />
             </div>
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 text-zinc-400 animate-spin" />
-            ) : githubStatus.connected ? (
-              <button
-                onClick={handleDisconnectGitHub}
-                disabled={isDisconnecting}
-                className="px-4 py-2 text-sm font-medium text-red-400 hover:text-white bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-transparent rounded-lg transition-colors flex items-center gap-2"
-              >
-                {isDisconnecting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <X className="w-4 h-4" />
-                )}
-                Disconnect
-              </button>
-            ) : (
-              <button
-                onClick={handleConnectGitHub}
-                className="px-4 py-2 text-sm font-medium text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors flex items-center gap-2"
-              >
-                <Github className="w-4 h-4" />
-                Connect
-              </button>
-            )}
+            <div>
+              <p className="font-medium text-white">GitHub</p>
+              <p className="text-sm text-zinc-500">
+                {isGithubConnected
+                  ? `Connected as @${githubAccount?.username || "connected"}`
+                  : "Connect for Code Police and Pitch Deck"}
+              </p>
+            </div>
           </div>
+          {!isLoaded ? (
+            <Loader2 className="w-5 h-5 text-zinc-400 animate-spin" />
+          ) : isGithubConnected ? (
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1 text-sm font-medium text-green-400 bg-green-500/10 rounded-full">
+                Connected
+              </span>
+              <button
+                onClick={handleManageAccount}
+                className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
+              >
+                Manage
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleManageAccount}
+              className="px-4 py-2 text-sm font-medium text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Github className="w-4 h-4" />
+              Connect GitHub
+            </button>
+          )}
         </div>
+
+        {!isGithubConnected && (
+          <div className="mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <p className="text-sm text-yellow-400">
+              <strong>Note:</strong> GitHub connection is required for Code Police (code review) 
+              and Pitch Deck Generator (repository analysis). Click &quot;Connect GitHub&quot; above to get started.
+            </p>
+          </div>
+        )}
       </section>
 
       {/* Notifications Section */}
@@ -281,6 +265,31 @@ function SettingsContent() {
           </button>
         </div>
       </section>
+
+      {/* Clerk UserProfile Modal */}
+      {showAccountModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="relative max-w-2xl w-full max-h-[90vh] overflow-auto bg-zinc-900 rounded-2xl p-2">
+            <button
+              onClick={() => setShowAccountModal(false)}
+              className="absolute top-4 right-4 z-10 p-2 text-zinc-400 hover:text-white bg-zinc-800 rounded-lg"
+            >
+              ✕
+            </button>
+            <UserProfile 
+              routing="hash"
+              appearance={{
+                elements: {
+                  rootBox: "w-full",
+                  card: "bg-zinc-900 border-none shadow-none",
+                  navbar: "hidden",
+                  pageScrollBox: "p-0",
+                },
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
