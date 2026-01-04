@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Header, Footer, HeroSection } from '@/components/layout';
+import { Header, Footer, HeroSection, HeroHighlightSection } from '@/components/layout';
 
 const features = [
   {
@@ -62,6 +62,12 @@ export default function LandingPage() {
 
       {/* Hero Section with Background Ripple Effect */}
       <HeroSection />
+
+      {/* Text Highlight Section */}
+      <HeroHighlightSection
+        text="Enough Building, time for"
+        highlightedText="redemption."
+      />
 
       {/* Features Section */}
       <section id="features" className="py-20 px-4 bg-zinc-50 dark:bg-zinc-900/50">
