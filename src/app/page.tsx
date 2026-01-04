@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Header, Footer, HeroSection, HeroHighlightSection } from '@/components/layout';
+import { Header, Footer, HeroSection, HeroHighlightSection, StickyScrollRevealDemo } from '@/components/layout';
 
 const features = [
   {
@@ -68,6 +68,9 @@ export default function LandingPage() {
         text="Enough Building, time for"
         highlightedText="redemption."
       />
+
+      {/* Sticky Scroll Features Section */}
+      <StickyScrollRevealDemo />
 
       {/* Features Section */}
       <section id="features" className="py-20 px-4 bg-zinc-50 dark:bg-zinc-900/50">
