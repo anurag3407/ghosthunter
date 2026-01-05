@@ -49,7 +49,8 @@ export async function GET() {
 
 /**
  * POST /api/equity/projects
- * Create a new equity project
+ * Create a new equity project linked to a GitHub repository
+ * Only the repository owner can create a project, and only once per repo
  */
 export async function POST(request: Request) {
   try {
@@ -60,11 +61,28 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, symbol, contractAddress, totalSupply } = body;
+    const { 
+      name, 
+      symbol, 
+      contractAddress, 
+      totalSupply,
+      githubRepoId,
+      githubRepoFullName,
+      githubRepoOwner,
+      ownerWalletAddress,
+    } = body;
 
+    // Validate required fields
     if (!name || !symbol || !contractAddress) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields: name, symbol, contractAddress" },
+        { status: 400 }
+      );
+    }
+
+    if (!githubRepoId || !githubRepoFullName || !githubRepoOwner) {
+      return NextResponse.json(
+        { error: "Missing required GitHub fields: githubRepoId, githubRepoFullName, githubRepoOwner" },
         { status: 400 }
       );
     }
@@ -74,6 +92,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
 
+    // Check if tokens have already been minted for this repository
+    const existingProjectSnapshot = await adminDb
+      .collection("equity_projects")
+      .where("githubRepoId", "==", githubRepoId)
+      .limit(1)
+      .get();
+
+    if (!existingProjectSnapshot.empty) {
+      return NextResponse.json(
+        { error: "Tokens have already been minted for this repository" },
+        { status: 409 }
+      );
+    }
+
     const projectRef = adminDb.collection("equity_projects").doc();
     const project = {
       id: projectRef.id,
@@ -81,14 +113,24 @@ export async function POST(request: Request) {
       name,
       symbol,
       contractAddress,
-      totalSupply: totalSupply || "0",
+      totalSupply: totalSupply || "1000000",
+      githubRepoId,
+      githubRepoFullName,
+      githubRepoOwner,
+      ownerWalletAddress: ownerWalletAddress || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     await projectRef.set(project);
 
-    return NextResponse.json({ project });
+    return NextResponse.json({ 
+      project: {
+        ...project,
+        createdAt: project.createdAt.toISOString(),
+        updatedAt: project.updatedAt.toISOString(),
+      }
+    });
   } catch (error) {
     console.error("Error creating equity project:", error);
     return NextResponse.json(
@@ -97,3 +139,4 @@ export async function POST(request: Request) {
     );
   }
 }
+
