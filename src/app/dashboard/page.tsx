@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { currentUser } from "@clerk/nextjs/server";
+import { useUser } from "@clerk/nextjs";
+import useSWR from "swr";
 import {
   Shield,
   Presentation,
@@ -7,202 +10,253 @@ import {
   Database,
   ArrowRight,
   Sparkles,
-  TrendingUp,
   Clock,
-  CheckCircle2,
+  Activity,
 } from "lucide-react";
 
 /**
  * ============================================================================
- * DASHBOARD HOME PAGE
+ * DASHBOARD HOME PAGE - SLEEK DESIGN
  * ============================================================================
- * Main dashboard page showing agent cards and quick stats.
+ * Modern, compact dashboard with real-time data from Firebase.
  */
 
-// Agent cards configuration
+// Types
+interface DashboardStats {
+  codeReviews: { total: number; thisWeek: number };
+  pitchDecks: { total: number; completed: number };
+  equityProjects: { total: number; transfers: number };
+  databaseQueries: { connections: number; queries: number };
+  recentActivity: ActivityItem[];
+}
+
+interface ActivityItem {
+  id: string;
+  type: "code-review" | "pitch-deck" | "equity" | "database";
+  title: string;
+  description: string;
+  timestamp: string;
+}
+
+// Fetcher for SWR
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+// Agent cards configuration - compact version
 const agents = [
   {
     id: "code-police",
     name: "Code Police",
-    description: "AI-powered code review that analyzes your GitHub commits and sends detailed reports to your email.",
+    description: "AI-powered code review & security scanning",
     icon: Shield,
-    color: "from-red-500 to-orange-500",
-    bgColor: "bg-red-500/10",
-    borderColor: "border-red-500/20",
-    textColor: "text-red-400",
+    gradient: "from-rose-500/20 to-orange-500/20",
+    iconColor: "text-rose-400",
+    borderHover: "hover:border-rose-500/30",
     href: "/dashboard/code-police",
-    features: ["Automatic PR analysis", "Security scanning", "Performance tips"],
   },
   {
     id: "pitch-deck",
-    name: "Pitch Deck Generator",
-    description: "Generate professional pitch decks from your README and project features in seconds.",
+    name: "Pitch Deck",
+    description: "Generate investor-ready presentations",
     icon: Presentation,
-    color: "from-blue-500 to-cyan-500",
-    bgColor: "bg-blue-500/10",
-    borderColor: "border-blue-500/20",
-    textColor: "text-blue-400",
+    gradient: "from-blue-500/20 to-cyan-500/20",
+    iconColor: "text-blue-400",
+    borderHover: "hover:border-blue-500/30",
     href: "/dashboard/pitch-deck",
-    features: ["AI-generated slides", "PDF export", "Custom themes"],
   },
   {
     id: "equity",
-    name: "Equity Distribution",
-    description: "Manage and distribute equity tokens on the blockchain with a simple interface.",
+    name: "Equity",
+    description: "Blockchain token management",
     icon: Coins,
-    color: "from-purple-500 to-pink-500",
-    bgColor: "bg-purple-500/10",
-    borderColor: "border-purple-500/20",
-    textColor: "text-purple-400",
+    gradient: "from-violet-500/20 to-fuchsia-500/20",
+    iconColor: "text-violet-400",
+    borderHover: "hover:border-violet-500/30",
     href: "/dashboard/equity",
-    features: ["Mint tokens", "Track ownership", "Transfer equity"],
   },
   {
     id: "database",
-    name: "Database Agent",
-    description: "Chat with your database using natural language. Connect PostgreSQL, MySQL, or MongoDB.",
+    name: "Database",
+    description: "Chat with your database in plain English",
     icon: Database,
-    color: "from-green-500 to-emerald-500",
-    bgColor: "bg-green-500/10",
-    borderColor: "border-green-500/20",
-    textColor: "text-green-400",
+    gradient: "from-emerald-500/20 to-teal-500/20",
+    iconColor: "text-emerald-400",
+    borderHover: "hover:border-emerald-500/30",
     href: "/dashboard/database",
-    features: ["Natural language queries", "Schema visualization", "Query history"],
   },
 ];
 
-export default async function DashboardPage() {
-  // Get actual user from Clerk
-  const user = await currentUser();
+// Activity icon mapping
+const activityIcons = {
+  "code-review": { icon: Shield, color: "text-rose-400", bg: "bg-rose-500/10" },
+  "pitch-deck": { icon: Presentation, color: "text-blue-400", bg: "bg-blue-500/10" },
+  equity: { icon: Coins, color: "text-violet-400", bg: "bg-violet-500/10" },
+  database: { icon: Database, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+};
+
+export default function DashboardPage() {
+  const { user } = useUser();
   const firstName = user?.firstName || "there";
 
+  // Fetch real-time stats
+  const { data, isLoading } = useSWR<{ stats: DashboardStats }>(
+    "/api/dashboard/stats",
+    fetcher,
+    { refreshInterval: 30000 } // Refresh every 30 seconds
+  );
+
+  const stats = data?.stats;
+
   return (
-    <div className="p-6 lg:p-8 space-y-8">
-      {/* Welcome Header */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-violet-400" />
-          <span className="text-sm font-medium text-violet-400">Welcome back</span>
+    <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Compact Welcome Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20">
+            <Sparkles className="w-5 h-5 text-violet-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              Hey {firstName}! 👋
+            </h1>
+            <p className="text-sm text-zinc-500">
+              Your AI startup toolkit is ready
+            </p>
+          </div>
         </div>
-        <h1 className="text-3xl lg:text-4xl font-bold text-white">
-          Hey {firstName}! 👋
-        </h1>
-        <p className="text-zinc-400 max-w-2xl">
-          Your AI-powered startup toolkit is ready. Choose an agent below to get started
-          or check your recent activity.
-        </p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <QuickStatCard
-          icon={Shield}
-          label="Code Reviews"
-          value="12"
-          change="+3 this week"
-          color="text-red-400"
-        />
-        <QuickStatCard
-          icon={Presentation}
-          label="Pitch Decks"
-          value="4"
-          change="2 completed"
-          color="text-blue-400"
-        />
-        <QuickStatCard
-          icon={Coins}
-          label="Token Transfers"
-          value="8"
-          change="100% success"
-          color="text-purple-400"
-        />
-        <QuickStatCard
-          icon={Database}
-          label="DB Queries"
-          value="156"
-          change="Last 7 days"
-          color="text-green-400"
-        />
+      {/* Sleek Stats Bar */}
+      <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x divide-zinc-800/50">
+          <StatItem
+            icon={Shield}
+            label="Code Reviews"
+            value={stats?.codeReviews.total ?? 0}
+            subtext={`+${stats?.codeReviews.thisWeek ?? 0} this week`}
+            color="text-rose-400"
+            isLoading={isLoading}
+          />
+          <StatItem
+            icon={Presentation}
+            label="Pitch Decks"
+            value={stats?.pitchDecks.total ?? 0}
+            subtext={`${stats?.pitchDecks.completed ?? 0} completed`}
+            color="text-blue-400"
+            isLoading={isLoading}
+          />
+          <StatItem
+            icon={Coins}
+            label="Equity Projects"
+            value={stats?.equityProjects.total ?? 0}
+            subtext={`${stats?.equityProjects.transfers ?? 0} transfers`}
+            color="text-violet-400"
+            isLoading={isLoading}
+          />
+          <StatItem
+            icon={Database}
+            label="DB Connections"
+            value={stats?.databaseQueries.connections ?? 0}
+            subtext={`${stats?.databaseQueries.queries ?? 0} queries`}
+            color="text-emerald-400"
+            isLoading={isLoading}
+          />
+        </div>
       </div>
 
-      {/* Agent Cards */}
+      {/* Agent Cards Grid - Compact */}
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Your Agents</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <h2 className="text-sm font-medium text-zinc-400 mb-3 flex items-center gap-2">
+          <Activity className="w-4 h-4" />
+          Your Agents
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {agents.map((agent) => (
             <AgentCard key={agent.id} agent={agent} />
           ))}
         </div>
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Activity - Streamlined */}
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Recent Activity</h2>
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
-          <div className="space-y-4">
-            <ActivityItem
-              icon={Shield}
-              title="Code review completed"
-              description="Found 3 issues in ghostfounder/main"
-              time="2 hours ago"
-              color="text-red-400"
-            />
-            <ActivityItem
-              icon={Presentation}
-              title="Pitch deck generated"
-              description="Created deck for 'AI Startup'"
-              time="Yesterday"
-              color="text-blue-400"
-            />
-            <ActivityItem
-              icon={Coins}
-              title="Tokens transferred"
-              description="Sent 10% equity to 0x1234...5678"
-              time="2 days ago"
-              color="text-purple-400"
-            />
-            <ActivityItem
-              icon={Database}
-              title="Database connected"
-              description="PostgreSQL connection established"
-              time="3 days ago"
-              color="text-green-400"
-            />
-          </div>
+        <h2 className="text-sm font-medium text-zinc-400 mb-3 flex items-center gap-2">
+          <Clock className="w-4 h-4" />
+          Recent Activity
+        </h2>
+        <div className="bg-zinc-900/30 backdrop-blur-sm border border-zinc-800/50 rounded-xl overflow-hidden">
+          {isLoading ? (
+            <div className="p-4 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 animate-pulse">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-800" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-32 bg-zinc-800 rounded" />
+                    <div className="h-3 w-48 bg-zinc-800/50 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : stats?.recentActivity && stats.recentActivity.length > 0 ? (
+            <div className="divide-y divide-zinc-800/50">
+              {stats.recentActivity.map((activity) => (
+                <ActivityRow key={activity.id} activity={activity} />
+              ))}
+            </div>
+          ) : (
+            <div className="p-8 text-center">
+              <div className="w-12 h-12 rounded-full bg-zinc-800/50 mx-auto mb-3 flex items-center justify-center">
+                <Activity className="w-6 h-6 text-zinc-600" />
+              </div>
+              <p className="text-zinc-500 text-sm">No activity yet</p>
+              <p className="text-zinc-600 text-xs mt-1">
+                Start using an agent to see your activity here
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// Quick Stat Card Component
-function QuickStatCard({
+// Compact Stat Item
+function StatItem({
   icon: Icon,
   label,
   value,
-  change,
+  subtext,
   color,
+  isLoading,
 }: {
   icon: React.ElementType;
   label: string;
-  value: string;
-  change: string;
+  value: number;
+  subtext: string;
   color: string;
+  isLoading: boolean;
 }) {
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-3">
-        <Icon className={`w-5 h-5 ${color}`} />
-        <TrendingUp className="w-4 h-4 text-zinc-500" />
+    <div className="flex items-center gap-3 lg:px-4 first:lg:pl-0 last:lg:pr-0">
+      <div className={`p-2 rounded-lg bg-zinc-800/50`}>
+        <Icon className={`w-4 h-4 ${color}`} />
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-sm text-zinc-400">{label}</p>
-      <p className="text-xs text-zinc-500 mt-1">{change}</p>
+      <div className="min-w-0">
+        {isLoading ? (
+          <div className="space-y-1 animate-pulse">
+            <div className="h-6 w-8 bg-zinc-800 rounded" />
+            <div className="h-3 w-16 bg-zinc-800/50 rounded" />
+          </div>
+        ) : (
+          <>
+            <p className="text-xl font-bold text-white tabular-nums">{value}</p>
+            <p className="text-xs text-zinc-500 truncate">{subtext}</p>
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-// Agent Card Component
+// Compact Agent Card
 function AgentCard({
   agent,
 }: {
@@ -211,72 +265,63 @@ function AgentCard({
   return (
     <Link
       href={agent.href}
-      className={`group relative overflow-hidden bg-zinc-900/50 border ${agent.borderColor} rounded-2xl p-6 transition-all duration-300 hover:border-zinc-700 hover:bg-zinc-900`}
+      className={`group relative overflow-hidden bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-4 transition-all duration-300 ${agent.borderHover} hover:bg-zinc-900/80`}
     >
-      {/* Gradient background on hover */}
+      {/* Gradient overlay on hover */}
       <div
-        className={`absolute inset-0 bg-gradient-to-br ${agent.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
+        className={`absolute inset-0 bg-gradient-to-br ${agent.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
       />
 
-      <div className="relative">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className={`p-3 rounded-xl ${agent.bgColor}`}>
-            <agent.icon className={`w-6 h-6 ${agent.textColor}`} />
+      <div className="relative flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-zinc-800/50 group-hover:bg-zinc-800 transition-colors">
+            <agent.icon className={`w-5 h-5 ${agent.iconColor}`} />
           </div>
-          <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+          <div>
+            <h3 className="font-semibold text-white text-sm">{agent.name}</h3>
+            <p className="text-xs text-zinc-500 line-clamp-1 mt-0.5">
+              {agent.description}
+            </p>
+          </div>
         </div>
-
-        {/* Content */}
-        <h3 className="text-xl font-semibold text-white mb-2">{agent.name}</h3>
-        <p className="text-zinc-400 text-sm mb-4 line-clamp-2">{agent.description}</p>
-
-        {/* Features */}
-        <div className="flex flex-wrap gap-2">
-          {agent.features.map((feature) => (
-            <span
-              key={feature}
-              className="px-3 py-1 text-xs font-medium text-zinc-400 bg-zinc-800/50 rounded-full"
-            >
-              {feature}
-            </span>
-          ))}
-        </div>
+        <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-white group-hover:translate-x-0.5 transition-all flex-shrink-0" />
       </div>
     </Link>
   );
 }
 
-// Activity Item Component
-function ActivityItem({
-  icon: Icon,
-  title,
-  description,
-  time,
-  color,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description: string;
-  time: string;
-  color: string;
-}) {
+// Activity Row
+function ActivityRow({ activity }: { activity: ActivityItem }) {
+  const { icon: Icon, color, bg } = activityIcons[activity.type];
+
+  // Format relative time
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
   return (
-    <div className="flex items-start gap-4">
-      <div className={`p-2 rounded-lg bg-zinc-800/50`}>
+    <div className="flex items-center gap-3 p-3 hover:bg-zinc-800/30 transition-colors">
+      <div className={`p-2 rounded-lg ${bg}`}>
         <Icon className={`w-4 h-4 ${color}`} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="font-medium text-white">{title}</p>
-          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-        </div>
-        <p className="text-sm text-zinc-400">{description}</p>
+        <p className="text-sm font-medium text-white truncate">{activity.title}</p>
+        <p className="text-xs text-zinc-500 truncate">{activity.description}</p>
       </div>
-      <div className="flex items-center gap-1 text-xs text-zinc-500">
-        <Clock className="w-3 h-3" />
-        {time}
-      </div>
+      <span className="text-xs text-zinc-600 flex-shrink-0">
+        {formatTime(activity.timestamp)}
+      </span>
     </div>
   );
 }
