@@ -221,7 +221,6 @@ export default function DashboardPage() {
 // Compact Stat Item
 function StatItem({
   icon: Icon,
-  label,
   value,
   subtext,
   color,

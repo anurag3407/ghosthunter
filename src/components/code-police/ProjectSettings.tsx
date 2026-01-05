@@ -149,7 +149,7 @@ export function ProjectSettings({ project, onUpdate, onClose }: ProjectSettingsP
               Custom Rules
             </label>
             <p className="text-xs text-zinc-500 mb-3">
-              Define specific rules for the AI to enforce (e.g., "No console.logs", "All functions must have JSDoc")
+              Define specific rules for the AI to enforce (e.g., &ldquo;No console.logs&rdquo;, &ldquo;All functions must have JSDoc&rdquo;)
             </p>
             
             {/* Rules List */}

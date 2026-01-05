@@ -11,8 +11,6 @@ import {
   Bot,
   Copy,
   Check,
-  Table,
-  RotateCcw,
   Plus,
   MessageSquare,
   Trash2,
@@ -334,7 +332,7 @@ export default function DatabaseChatPage({ params }: { params: Promise<{ id: str
               </div>
               <h2 className="text-xl font-semibold text-white mb-2">Start a Conversation</h2>
               <p className="text-zinc-400 max-w-md mb-6">
-                Ask me anything about your database in plain English. I'll generate the right queries for you.
+                Ask me anything about your database in plain English. I&apos;ll generate the right queries for you.
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
                 {["Show me all tables", "What's the schema?", "Count all users"].map((suggestion) => (

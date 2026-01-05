@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useId, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,15 @@ export const Cover = ({
       setBeamPositions(positions);
     }
   }, []);
+
+  // Pre-compute random values to avoid impure function calls during render
+  const beamAnimations = useMemo(() => 
+    beamPositions.map(() => ({
+      duration: Math.random() * 2 + 1,
+      delay: Math.random() * 2 + 1,
+    })),
+    [beamPositions]
+  );
 
   return (
     <div
@@ -77,8 +86,8 @@ export const Cover = ({
         <Beam
           key={index}
           hovered={hovered}
-          duration={Math.random() * 2 + 1}
-          delay={Math.random() * 2 + 1}
+          duration={beamAnimations[index]?.duration ?? 2}
+          delay={beamAnimations[index]?.delay ?? 1}
           width={containerWidth}
           style={{ top: `${position}px` }}
         />
@@ -128,6 +137,12 @@ export const Beam = ({
   width?: number;
 } & React.ComponentProps<typeof motion.svg>) => {
   const id = useId();
+  
+  // Pre-compute random values to avoid impure function calls during render
+  const randomValues = useMemo(() => ({
+    hoverDelay: Math.random() * (1 - 0.2) + 0.2,
+    repeatDelay: Math.random() * (2 - 1) + 1,
+  }), []);
 
   return (
     <motion.svg
@@ -164,8 +179,8 @@ export const Beam = ({
             duration: hovered ? 0.5 : duration ?? 2,
             ease: "linear",
             repeat: Infinity,
-            delay: hovered ? Math.random() * (1 - 0.2) + 0.2 : 0,
-            repeatDelay: hovered ? Math.random() * (2 - 1) + 1 : delay ?? 1,
+            delay: hovered ? randomValues.hoverDelay : 0,
+            repeatDelay: hovered ? randomValues.repeatDelay : delay ?? 1,
           }}
         >
           <stop stopColor="#2EB9DF" stopOpacity="0" />
