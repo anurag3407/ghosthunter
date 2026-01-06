@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Header, Footer, HeroSection, HeroHighlightSection, StickyScrollRevealDemo } from '@/components/layout';
+import { TextHoverEffect } from "@/components/ui/text-hover-effect";
 
 const features = [
   {
@@ -71,6 +72,11 @@ export default function LandingPage() {
 
       {/* Sticky Scroll Features Section */}
       <StickyScrollRevealDemo />
+
+      {/* Text Hover Effect Section */}
+      <div className="h-[20rem] md:h-[20rem] flex items-center justify-center w-full">
+        <TextHoverEffect text="GHOSTFOUNDER" />
+      </div>
 
       {/* Features Section */}
       <section id="features" className="py-20 px-4 bg-zinc-50 dark:bg-zinc-900/50">
