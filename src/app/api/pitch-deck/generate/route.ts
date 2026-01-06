@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { generatePitchDeck } from "@/lib/agents/pitch-deck/generator";
 
@@ -31,8 +32,12 @@ export async function POST(request: NextRequest) {
     }
     console.log(`${LOG_PREFIX} [${requestId}] ✓ GOOGLE_AI_API_KEY is configured`);
 
-    // Development: Use a dev user ID
-    const userId = "dev-user-123";
+    // Get authenticated user
+    const { userId } = await auth();
+    if (!userId) {
+      console.error(`${LOG_PREFIX} [${requestId}] ❌ User not authenticated`);
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.log(`${LOG_PREFIX} [${requestId}] Using userId: ${userId}`);
 
     // Parse request body
@@ -106,7 +111,27 @@ export async function POST(request: NextRequest) {
     console.log(`${LOG_PREFIX} [${requestId}] Saving deck to Firestore...`);
     const saveStartTime = Date.now();
     
-    const deckRef = db.collection("pitchDecks").doc();
+    // Helper to remove undefined values
+    function removeUndefined<T>(obj: T): T {
+      if (obj === null || obj === undefined) {
+        return obj;
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(item => removeUndefined(item)) as unknown as T;
+      }
+      if (typeof obj === 'object') {
+        const result: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+          if (value !== undefined) {
+            result[key] = removeUndefined(value);
+          }
+        }
+        return result as T;
+      }
+      return obj;
+    }
+    
+    const deckRef = db.collection("pitch-decks").doc();
     const deck = {
       id: deckRef.id,
       userId,
@@ -126,7 +151,8 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     };
 
-    await deckRef.set(deck);
+    const cleanDeck = removeUndefined(deck);
+    await deckRef.set(cleanDeck);
     
     const saveDuration = Date.now() - saveStartTime;
     console.log(`${LOG_PREFIX} [${requestId}] ✓ Deck saved to Firestore in ${saveDuration}ms`);

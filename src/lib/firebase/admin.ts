@@ -132,6 +132,8 @@ export function getAdminDb(): Firestore | null {
   
   try {
     adminDb = getFirestore(app);
+    // Enable ignoreUndefinedProperties to prevent errors with undefined values
+    adminDb.settings({ ignoreUndefinedProperties: true });
     return adminDb;
   } catch (error) {
     console.error('[Firebase Admin] Failed to get Firestore:', error);

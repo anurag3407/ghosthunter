@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 
 const LOG_PREFIX = "[PitchDeck:Decks]";
@@ -29,15 +30,19 @@ export async function GET(
     }
     console.log(`${LOG_PREFIX} [${requestId}] ✓ Database available`);
 
-    // Development: Use a dev user ID
-    const userId = "dev-user-123";
+    // Get authenticated user
+    const { userId } = await auth();
+    if (!userId) {
+      console.error(`${LOG_PREFIX} [${requestId}] ❌ User not authenticated`);
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.log(`${LOG_PREFIX} [${requestId}] Using userId: ${userId}`);
 
     const { id } = await params;
     console.log(`${LOG_PREFIX} [${requestId}] Fetching deck: ${id}`);
     
     const fetchStartTime = Date.now();
-    const doc = await db.collection("pitchDecks").doc(id).get();
+    const doc = await db.collection("pitch-decks").doc(id).get();
     const fetchDuration = Date.now() - fetchStartTime;
     
     console.log(`${LOG_PREFIX} [${requestId}] Firestore fetch completed in ${fetchDuration}ms`);
@@ -118,7 +123,12 @@ export async function PATCH(
     }
     console.log(`${LOG_PREFIX} [${requestId}] ✓ Database available`);
 
-    const userId = "dev-user-123";
+    // Get authenticated user
+    const { userId } = await auth();
+    if (!userId) {
+      console.error(`${LOG_PREFIX} [${requestId}] ❌ User not authenticated`);
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.log(`${LOG_PREFIX} [${requestId}] Using userId: ${userId}`);
 
     const { id } = await params;
@@ -133,7 +143,7 @@ export async function PATCH(
     console.log(`${LOG_PREFIX} [${requestId}]   - theme: ${body.theme ? "updating" : "unchanged"}`);
     console.log(`${LOG_PREFIX} [${requestId}]   - status: ${body.status ? `updating to "${body.status}"` : "unchanged"}`);
 
-    const docRef = db.collection("pitchDecks").doc(id);
+    const docRef = db.collection("pitch-decks").doc(id);
     
     console.log(`${LOG_PREFIX} [${requestId}] Fetching existing deck for authorization check...`);
     const doc = await docRef.get();
@@ -213,13 +223,18 @@ export async function DELETE(
     }
     console.log(`${LOG_PREFIX} [${requestId}] ✓ Database available`);
 
-    const userId = "dev-user-123";
+    // Get authenticated user
+    const { userId } = await auth();
+    if (!userId) {
+      console.error(`${LOG_PREFIX} [${requestId}] ❌ User not authenticated`);
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.log(`${LOG_PREFIX} [${requestId}] Using userId: ${userId}`);
 
     const { id } = await params;
     console.log(`${LOG_PREFIX} [${requestId}] Deleting deck: ${id}`);
     
-    const docRef = db.collection("pitchDecks").doc(id);
+    const docRef = db.collection("pitch-decks").doc(id);
     
     console.log(`${LOG_PREFIX} [${requestId}] Fetching deck for authorization check...`);
     const doc = await docRef.get();

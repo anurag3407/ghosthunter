@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import {
   Presentation,
@@ -8,6 +9,8 @@ import {
   Download,
   ArrowRight,
   Sparkles,
+  Wand2,
+  PenTool,
 } from "lucide-react";
 
 /**
@@ -27,18 +30,17 @@ interface PitchDeck {
 }
 
 export default async function PitchDeckPage() {
-  // Development: Use a dev user ID
-  // TODO: Replace with real auth in production
-  const userId = "dev-user-123";
-
+  // Get authenticated user
+  const { userId } = await auth();
+  
   // Fetch decks from Firestore
   let decks: PitchDeck[] = [];
   const db = getAdminDb();
   
-  if (db) {
+  if (db && userId) {
     try {
       const decksSnapshot = await db
-        .collection("pitchDecks")
+        .collection("pitch-decks")
         .where("userId", "==", userId)
         .orderBy("createdAt", "desc")
         .get();
@@ -84,10 +86,17 @@ export default async function PitchDeckPage() {
         </div>
         <Link
           href="/dashboard/pitch-deck/new"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl transition-colors border border-zinc-700"
         >
           <Plus className="w-4 h-4" />
-          New Pitch Deck
+          Quick Deck
+        </Link>
+        <Link
+          href="/dashboard/pitch-deck/studio/new"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium rounded-xl transition-colors"
+        >
+          <Wand2 className="w-4 h-4" />
+          Advanced Studio
         </Link>
       </div>
 
@@ -118,8 +127,8 @@ function EmptyState() {
         Create your first pitch deck by selecting a GitHub repository. Our AI will analyze your README and generate professional slides.
       </p>
       <Link
-        href="/dashboard/pitch-deck/new"
-        className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl transition-colors"
+        href="/dashboard/pitch-deck/studio/new"
+        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium rounded-xl transition-colors"
       >
         <Sparkles className="w-4 h-4" />
         Create Your First Deck
@@ -136,14 +145,13 @@ function DeckCard({
   formatDate: (date: Date) => string;
 }) {
   return (
-    <Link
-      href={`/dashboard/pitch-deck/${deck.id}`}
-      className="group bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 hover:border-zinc-700 transition-all"
-    >
+    <div className="group bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 hover:border-zinc-700 transition-all">
       {/* Preview placeholder */}
-      <div className="aspect-video bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl mb-4 flex items-center justify-center border border-zinc-800">
-        <FileText className="w-12 h-12 text-zinc-600" />
-      </div>
+      <Link href={`/dashboard/pitch-deck/${deck.id}`}>
+        <div className="aspect-video bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-xl mb-4 flex items-center justify-center border border-zinc-800 cursor-pointer hover:border-zinc-600 transition-colors">
+          <FileText className="w-12 h-12 text-zinc-600" />
+        </div>
+      </Link>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -173,10 +181,16 @@ function DeckCard({
       <div className="mt-4 pt-4 border-t border-zinc-800 flex items-center justify-between">
         <button className="flex items-center gap-1 text-sm text-zinc-400 hover:text-white transition-colors">
           <Download className="w-4 h-4" />
-          Export PDF
+          Export
         </button>
-        <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+        <Link
+          href={`/dashboard/pitch-deck/studio/${deck.id}`}
+          className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+        >
+          <PenTool className="w-4 h-4" />
+          Edit in Studio
+        </Link>
       </div>
-    </Link>
+    </div>
   );
 }
