@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Header, Footer, HeroSection, HeroHighlightSection, StickyScrollRevealDemo } from '@/components/layout';
 import { TextHoverEffect } from "@/components/ui/text-hover-effect";
 import FeaturesSectionDemo from "@/components/ui/features-section-demo-3";
+import AnimatedTestimonialsDemo from "@/components/ui/animated-testimonials-demo";
 
 const features = [
   {
@@ -78,6 +79,10 @@ export default function LandingPage() {
       {/* New Features Section */}
       <FeaturesSectionDemo />
 
+      {/* Animated Testimonials Section */}
+      <AnimatedTestimonialsDemo />
+
+
       {/* Text Hover Effect Section */}
       <div className="h-[20rem] md:h-[20rem] flex items-center justify-center w-full">
         <TextHoverEffect text="GHOSTFOUNDER" />
@@ -116,45 +121,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white mb-4">
-              Loved by teams worldwide
-            </h2>
-            <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
-              See what our customers have to say about their experience.
-            </p>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div
-                key={index}
-                className="p-6 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800"
-              >
-                <p className="text-zinc-700 dark:text-zinc-300 mb-6 italic">
-                  &ldquo;{testimonial.quote}&rdquo;
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white font-medium text-sm">
-                    {testimonial.avatar}
-                  </div>
-                  <div>
-                    <p className="font-medium text-zinc-900 dark:text-white">
-                      {testimonial.author}
-                    </p>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                      {testimonial.role}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
+ 
+       {/* Animated Testimonials Section */}
+       <section className="bg-black dark:bg-black py-10">
+          <div className="text-center mb-8">
+             <h2 className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white mb-4">
+               Trusted by Innovative Teams
+             </h2>
+             <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
+               Hear from founders and engineers who build with GhostHunter.
+             </p>
           </div>
-        </div>
-      </section>
+       </section>
 
       {/* CTA Section */}
       <section className="py-20 px-4 bg-gradient-to-r from-violet-600 to-indigo-600">
