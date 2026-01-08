@@ -88,6 +88,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState("");
 
@@ -143,6 +144,43 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }
 
     setProject(data.project);
+  };
+
+  // Trigger manual analysis
+  const runAnalysis = async () => {
+    if (!project) return;
+    setIsAnalyzing(true);
+    try {
+      const [owner, repo] = project.githubFullName?.split('/') || [];
+      if (!owner || !repo) {
+        throw new Error('Invalid repository name');
+      }
+
+      const res = await fetch('/api/code-police/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: project.id,
+          owner,
+          repo,
+          sendEmail: true, // Enable email
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Analysis failed');
+      }
+
+      // Refresh data to show new run
+      await fetchData(true);
+      alert(`Analysis complete! Found ${data.issueCount} issues.`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Analysis failed');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const getSeverityIcon = (severity: string) => {
@@ -266,6 +304,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button 
+              onClick={runAnalysis}
+              disabled={isAnalyzing || project.status !== 'active'}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  Run Analysis
+                </>
+              )}
+            </button>
             <button 
               onClick={() => fetchData(true)}
               disabled={isRefreshing}

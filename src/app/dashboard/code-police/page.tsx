@@ -81,7 +81,7 @@ export default async function CodePolicePage() {
       let lastRun: AnalysisRun | null = null;
       try {
         const runsSnapshot = await adminDb
-          .collection("analysisRuns")
+          .collection("analysis_runs")
           .where("projectId", "==", project.id)
           .orderBy("createdAt", "desc")
           .limit(1)

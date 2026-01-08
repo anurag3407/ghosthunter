@@ -167,25 +167,33 @@ export async function POST(request: NextRequest) {
     await batch.commit();
 
     // Send email if requested
-    if (sendEmail && recipientEmail) {
+    if (sendEmail) {
       try {
-        await sendAnalysisReport({
-          to: recipientEmail,
-          run: {
-            ...analysisRun,
-            issueCounts,
-            author: {
-              name: commit.commit.author.name,
-              email: commit.commit.author.email,
-            },
-          } as AnalysisRun,
-          issues: fullIssues,
-          summary,
-          repoName: `${owner}/${repo}`,
-          commitUrl: `https://github.com/${owner}/${repo}/commit/${commitSha}`,
-        });
+        // Use provided email or fall back to user's email from Firestore
+        const emailTo = recipientEmail || userData?.email;
+        
+        if (!emailTo) {
+          console.warn("No email address available for notification");
+        } else {
+          await sendAnalysisReport({
+            to: emailTo,
+            run: {
+              ...analysisRun,
+              issueCounts,
+              author: {
+                name: commit.commit.author.name,
+                email: commit.commit.author.email,
+              },
+            } as AnalysisRun,
+            issues: fullIssues,
+            summary,
+            repoName: `${owner}/${repo}`,
+            commitUrl: `https://github.com/${owner}/${repo}/commit/${commitSha || 'HEAD'}`,
+          });
 
-        await analysisRef.update({ emailStatus: "sent" });
+          await analysisRef.update({ emailStatus: "sent", emailSentTo: emailTo });
+          console.log(`[Analysis] Email sent to ${emailTo}`);
+        }
       } catch (error) {
         console.error("Failed to send email report:", error);
         await analysisRef.update({ emailStatus: "failed" });

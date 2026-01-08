@@ -26,7 +26,14 @@ export async function GET(
     const { id } = await params;
     const adminDb = getAdminDb();
     if (!adminDb) {
-      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+      console.error('[API] Firebase Admin not initialized. Check environment variables:', {
+        hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
+        hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+        hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+      });
+      return NextResponse.json({ 
+        error: "Database not configured. Please check server logs for Firebase Admin initialization errors." 
+      }, { status: 503 });
     }
 
     const projectDoc = await adminDb.collection("projects").doc(id).get();

@@ -509,7 +509,7 @@ export function SlideCanvas({ containerWidth: propWidth, containerHeight: propHe
   const renderElement = (element: SlideElement) => {
     const isSelected = selectedElementIds.includes(element.id);
     const commonProps = {
-      // key property removed from here to avoid spreading it
+      key: element.id,
       isSelected,
       onSelect: () => selectElement(element.id),
       onChange: (updates: Partial<SlideElement>) => handleElementChange(element.id, updates),
@@ -518,13 +518,13 @@ export function SlideCanvas({ containerWidth: propWidth, containerHeight: propHe
     switch (element.type) {
       case "text":
       case "heading":
-        return <TextNode key={element.id} element={element as TextElement} {...commonProps} />;
+        return <TextNode element={element as TextElement} {...commonProps} />;
       case "bullet-list":
-        return <BulletListNode key={element.id} element={element as BulletListElement} {...commonProps} />;
+        return <BulletListNode element={element as BulletListElement} {...commonProps} />;
       case "metric":
-        return <MetricNode key={element.id} element={element as MetricElement} {...commonProps} />;
+        return <MetricNode element={element as MetricElement} {...commonProps} />;
       case "shape":
-        return <ShapeNode key={element.id} element={element as ShapeElement} {...commonProps} />;
+        return <ShapeNode element={element as ShapeElement} {...commonProps} />;
       case "image":
         // Placeholder for images
         return (

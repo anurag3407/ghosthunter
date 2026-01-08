@@ -124,6 +124,8 @@ export function getAdminApp(): App | null {
 /**
  * Get the Firestore Admin database instance
  */
+let settingsApplied = false;
+
 export function getAdminDb(): Firestore | null {
   if (adminDb) return adminDb;
   
@@ -131,9 +133,15 @@ export function getAdminDb(): Firestore | null {
   if (!app) return null;
   
   try {
-    adminDb = getFirestore(app);
-    // Enable ignoreUndefinedProperties to prevent errors with undefined values
-    adminDb.settings({ ignoreUndefinedProperties: true });
+    const db = getFirestore(app);
+    
+    // Apply settings only once, before any other Firestore operations
+    if (!settingsApplied) {
+      db.settings({ ignoreUndefinedProperties: true });
+      settingsApplied = true;
+    }
+    
+    adminDb = db;
     return adminDb;
   } catch (error) {
     console.error('[Firebase Admin] Failed to get Firestore:', error);
