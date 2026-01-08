@@ -4,60 +4,6 @@ import { TextHoverEffect } from "@/components/ui/text-hover-effect";
 import FeaturesSectionDemo from "@/components/ui/features-section-demo-3";
 import AnimatedTestimonialsDemo from "@/components/ui/animated-testimonials-demo";
 
-const features = [
-  {
-    icon: '🚀',
-    title: 'Lightning Fast',
-    description: 'Built with Next.js 15 for optimal performance and instant page loads.',
-  },
-  {
-    icon: '🔒',
-    title: 'Secure by Default',
-    description: 'Enterprise-grade security with authentication and data protection.',
-  },
-  {
-    icon: '📱',
-    title: 'Fully Responsive',
-    description: 'Beautiful experience on any device, from mobile to desktop.',
-  },
-  {
-    icon: '🎨',
-    title: 'Modern Design',
-    description: 'Clean, intuitive interface with dark mode support built-in.',
-  },
-  {
-    icon: '⚡',
-    title: 'Real-time Updates',
-    description: 'Stay synced with live updates and instant notifications.',
-  },
-  {
-    icon: '🔧',
-    title: 'Easy Integration',
-    description: 'Connect with your favorite tools and services seamlessly.',
-  },
-];
-
-const testimonials = [
-  {
-    quote: "GhostHunter has transformed how we manage our projects. The interface is intuitive and the performance is incredible.",
-    author: "Sarah Chen",
-    role: "CTO at TechCorp",
-    avatar: "SC",
-  },
-  {
-    quote: "We've seen a 40% increase in team productivity since switching to GhostHunter. Highly recommended!",
-    author: "Michael Torres",
-    role: "Product Manager at StartupXYZ",
-    avatar: "MT",
-  },
-  {
-    quote: "The best project management tool we've ever used. The support team is fantastic too!",
-    author: "Emily Johnson",
-    role: "CEO at DesignStudio",
-    avatar: "EJ",
-  },
-];
-
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-black dark:bg-black">
@@ -73,67 +19,18 @@ export default function LandingPage() {
       />
 
       {/* Sticky Scroll Features Section */}
-      {/* Sticky Scroll Features Section */}
       <StickyScrollRevealDemo />
 
-      {/* New Features Section */}
+      {/* Features Section */}
       <FeaturesSectionDemo />
 
       {/* Animated Testimonials Section */}
       <AnimatedTestimonialsDemo />
 
-
       {/* Text Hover Effect Section */}
       <div className="h-[20rem] md:h-[20rem] flex items-center justify-center w-full">
         <TextHoverEffect text="GHOSTFOUNDER" />
       </div>
-
-      {/* Features Section */}
-      <section id="features" className="py-20 px-4 bg-zinc-50 dark:bg-zinc-900/50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white mb-4">
-              Everything you need to succeed
-            </h2>
-            <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
-              Powerful features designed to help your team work smarter, not harder.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <div
-                key={index}
-                className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:shadow-lg transition-shadow"
-              >
-                <div className="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-2xl mb-4">
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-zinc-600 dark:text-zinc-400">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-
- 
-       {/* Animated Testimonials Section */}
-       <section className="bg-black dark:bg-black py-10">
-          <div className="text-center mb-8">
-             <h2 className="text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white mb-4">
-               Trusted by Innovative Teams
-             </h2>
-             <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
-               Hear from founders and engineers who build with GhostHunter.
-             </p>
-          </div>
-       </section>
 
       {/* CTA Section */}
       <section className="py-20 px-4 bg-gradient-to-r from-violet-600 to-indigo-600">
