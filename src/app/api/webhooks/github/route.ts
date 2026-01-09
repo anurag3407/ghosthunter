@@ -75,25 +75,37 @@ function verifyWebhookSignature(
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("[GitHub Webhook] Received webhook event");
+    
     const rawBody = await request.text();
     const signature = request.headers.get("x-hub-signature-256");
     const event = request.headers.get("x-github-event");
+    const delivery = request.headers.get("x-github-delivery");
+
+    console.log("[GitHub Webhook] Event type:", event);
+    console.log("[GitHub Webhook] Delivery ID:", delivery);
 
     if (!event) {
+      console.error("[GitHub Webhook] Missing event header");
       return NextResponse.json({ error: "Missing event header" }, { status: 400 });
     }
 
     // Parse the payload
     const payload = JSON.parse(rawBody);
     const repoId = payload.repository?.id;
+    const repoFullName = payload.repository?.full_name;
+
+    console.log("[GitHub Webhook] Repository:", repoFullName, "ID:", repoId);
 
     if (!repoId) {
+      console.error("[GitHub Webhook] Invalid payload - no repository ID");
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
     // Get Firestore instance
     const adminDb = getAdminDb();
     if (!adminDb) {
+      console.error("[GitHub Webhook] Database not configured");
       return NextResponse.json(
         { error: "Database not configured" },
         { status: 503 }
@@ -108,6 +120,7 @@ export async function POST(request: NextRequest) {
       .get();
 
     if (projectsSnapshot.empty) {
+      console.error("[GitHub Webhook] Project not found for repo ID:", repoId);
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
@@ -123,34 +136,42 @@ export async function POST(request: NextRequest) {
       [key: string]: unknown;
     };
 
+    console.log("[GitHub Webhook] Found project:", project.id, "Status:", project.status);
+
     // Check project status (Vercel-style controls)
     const projectStatus = project.status || 'active';
     if (projectStatus === 'paused') {
-      console.log(`[Webhook] Project ${project.id} is paused, skipping analysis`);
+      console.log(`[GitHub Webhook] Project ${project.id} is paused, skipping analysis`);
       return NextResponse.json({ message: 'Project paused, skipping analysis' });
     }
     if (projectStatus === 'stopped') {
-      console.log(`[Webhook] Project ${project.id} is stopped`);
+      console.log(`[GitHub Webhook] Project ${project.id} is stopped`);
       return NextResponse.json({ error: 'Project stopped' }, { status: 404 });
     }
 
     // Verify signature
     const webhookSecret = project.webhookSecret;
     if (webhookSecret && !verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+      console.error("[GitHub Webhook] Invalid signature for project:", project.id);
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
+
+    console.log("[GitHub Webhook] Signature verified successfully");
 
     // Get user's GitHub token
     const userDoc = await adminDb.collection("users").doc(project.userId as string).get();
     const githubToken = userDoc.data()?.githubAccessToken;
 
     if (!githubToken) {
-      console.error("No GitHub token found for user:", project.userId);
+      console.error("[GitHub Webhook] No GitHub token found for user:", project.userId);
       return NextResponse.json({ error: "No GitHub token" }, { status: 400 });
     }
 
+    console.log("[GitHub Webhook] Processing event:", event);
+
     // Handle different events
     if (event === "push") {
+      console.log("[GitHub Webhook] Handling push event");
       await handlePushEvent(
         payload as GitHubPushPayload,
         project as { id: string; userId: string; [key: string]: unknown },
@@ -158,6 +179,7 @@ export async function POST(request: NextRequest) {
       );
     } else if (event === "pull_request") {
       const prPayload = payload as GitHubPRPayload;
+      console.log("[GitHub Webhook] Handling PR event, action:", prPayload.action);
       if (["opened", "synchronize"].includes(prPayload.action)) {
         await handlePREvent(
           prPayload,
@@ -165,11 +187,14 @@ export async function POST(request: NextRequest) {
           githubToken
         );
       }
+    } else {
+      console.log("[GitHub Webhook] Unhandled event type:", event);
     }
 
+    console.log("[GitHub Webhook] Webhook processed successfully");
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Webhook error:", error);
+    console.error("[GitHub Webhook] Error:", error);
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }
@@ -182,20 +207,26 @@ async function handlePushEvent(
   project: { id: string; userId: string; [key: string]: unknown },
   githubToken: string
 ) {
-  const { repository, after: commitSha } = payload;
+  const { repository, after: commitSha, commits } = payload;
   const owner = repository.owner.login;
   const repo = repository.name;
   const branch = payload.ref.replace("refs/heads/", "");
 
+  console.log("[Push Event] Starting analysis for:", `${owner}/${repo}`, "Branch:", branch);
+  console.log("[Push Event] Commit:", commitSha);
+  console.log("[Push Event] Number of commits:", commits?.length || 0);
+
   // Get Firestore instance
   const adminDb = getAdminDb();
   if (!adminDb) {
-    console.error("[GitHub Webhook] Database not configured");
+    console.error("[Push Event] Database not configured");
     return;
   }
 
   // Create analysis run
   const analysisRef = adminDb.collection("analysis_runs").doc();
+  
+  console.log("[Push Event] Creating analysis run:", analysisRef.id);
   
   await analysisRef.set({
     id: analysisRef.id,
@@ -210,16 +241,23 @@ async function handlePushEvent(
   });
 
   try {
+    console.log("[Push Event] Fetching commit details...");
     // Fetch commit and analyze
     const commit = await fetchCommit(githubToken, owner, repo, commitSha);
+    console.log("[Push Event] Commit has", commit.files.length, "files changed");
+    
     const allIssues: Omit<CodeIssue, "id" | "analysisRunId" | "projectId" | "isMuted">[] = [];
 
     // Get custom rules from project settings
     const customRules = (project.customRules as string[] | undefined) || [];
 
     for (const file of commit.files) {
-      if (file.status === "removed") continue;
+      if (file.status === "removed") {
+        console.log("[Push Event] Skipping removed file:", file.filename);
+        continue;
+      }
 
+      console.log("[Push Event] Analyzing file:", file.filename);
       const content = await fetchFileContent(githubToken, owner, repo, file.filename, commitSha);
       const language = detectLanguage(file.filename);
 
