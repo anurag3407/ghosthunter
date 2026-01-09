@@ -13,6 +13,9 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+// Force dynamic rendering to prevent build-time prerendering without env vars
+export const dynamic = 'force-dynamic';
+
 /**
  * ============================================================================
  * CODE POLICE - MAIN PAGE

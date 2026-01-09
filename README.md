@@ -1,36 +1,144 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GhostFounder - Build Startups at Warp Speed 🚀
 
-## Getting Started
+AI-powered platform for startups featuring Code Police, Pitch Deck Generator, Equity Distribution, and Database Agent.
 
-First, run the development server:
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new)
 
+## ✨ Features
+
+- **🛡️ Code Police**: AI-powered code review and quality checks for your GitHub repositories
+- **📊 Pitch Deck Generator**: Create professional pitch decks with AI assistance
+- **💰 Equity Distribution**: Blockchain-based equity token management
+- **💾 Database Agent**: AI-powered database operations and management
+
+## 🚀 Quick Start
+
+### Local Development
+
+1. **Clone and Install**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <your-repo-url>
+cd ghosthunter
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Setup Environment**
+```bash
+cp .env.example .env.local
+# Edit .env.local with your credentials
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. **Validate Configuration**
+```bash
+npm run validate-env
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. **Run Development Server**
+```bash
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000)
 
-To learn more about Next.js, take a look at the following resources:
+### Deploy to Railway
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Quick Steps:**
+1. Sign up at [Railway](https://railway.app)
+2. Connect your GitHub repository
+3. Add environment variables (see [RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md))
+4. Deploy automatically!
 
-## Deploy on Vercel
+📖 **Full Guide**: [Railway Deployment Documentation](./RAILWAY_DEPLOYMENT.md)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📚 Documentation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **[Setup Guide](./SETUP.md)** - Complete setup instructions
+- **[Railway Deployment](./RAILWAY_DEPLOYMENT.md)** - Production deployment guide
+- **[Deployment Checklist](./DEPLOYMENT_CHECKLIST.md)** - Pre-deployment checklist
+- **[Code Police](./CODE_POLICE_README.md)** - Code review feature docs
+- **[Database Agent](./DATABASE_AGENT_README.md)** - Database management docs
+- **[Equity Distribution](./EQUITY_DISTRIBUTION_README.md)** - Blockchain equity docs
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Authentication**: Clerk
+- **Database**: Firebase Firestore
+- **Blockchain**: Ethereum (Sepolia Testnet)
+- **AI**: Google Gemini
+- **Styling**: Tailwind CSS
+- **Deployment**: Railway
+
+## 📋 Available Scripts
+
+```bash
+npm run dev           # Start development server
+npm run build         # Build for production
+npm run start         # Start production server
+npm run lint          # Run ESLint
+npm run lint:fix      # Fix linting issues
+npm run type-check    # TypeScript type checking
+npm run validate-env  # Validate environment variables
+```
+
+## 🔐 Environment Variables
+
+Required environment variables:
+
+```bash
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
+CLERK_SECRET_KEY=sk_test_xxxxx
+
+# Firebase
+NEXT_PUBLIC_FIREBASE_API_KEY=xxxxx
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=xxxxx
+# ... see .env.example for full list
+```
+
+See [.env.example](./.env.example) for complete list.
+
+## 🏗️ Project Structure
+
+```
+ghosthunter/
+├── src/
+│   ├── app/              # Next.js app directory
+│   │   ├── api/          # API routes
+│   │   ├── dashboard/    # Dashboard pages
+│   │   └── layout.tsx    # Root layout
+│   ├── components/       # React components
+│   ├── lib/              # Utilities and helpers
+│   └── types/            # TypeScript types
+├── scripts/              # Build scripts
+├── contracts/            # Smart contracts
+├── public/              # Static assets
+└── package.json         # Dependencies
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+MIT License - See LICENSE file for details
+
+## 🆘 Support
+
+- **Issues**: [GitHub Issues](../../issues)
+- **Documentation**: See docs folder
+- **Email**: support@ghostfounder.com
+
+## 🔗 Links
+
+- [Live Demo](https://ghostfounder.up.railway.app) (if deployed)
+- [Documentation](./SETUP.md)
+- [Deployment Guide](./RAILWAY_DEPLOYMENT.md)
+
+---
+
+Built with ❤️ using Next.js and AI
