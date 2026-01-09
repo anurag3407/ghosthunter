@@ -47,9 +47,20 @@ function validateEnvironment() {
   const missing = [];
   const warnings = [];
   
-  // Skip validation in CI environment if explicitly set
+  // Skip validation if explicitly disabled
   if (process.env.SKIP_ENV_VALIDATION === 'true') {
     console.log('⏭️  Skipping environment validation (SKIP_ENV_VALIDATION=true)\n');
+    return;
+  }
+  
+  // Auto-skip validation in Railway/CI environments unless explicitly enabled
+  const isRailway = process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID;
+  const isCI = process.env.CI === 'true';
+  
+  if ((isRailway || isCI) && process.env.REQUIRE_ENV_VALIDATION !== 'true') {
+    console.log('⏭️  Skipping environment validation in CI/Railway build\n');
+    console.log('💡 Environment variables will be validated at runtime\n');
+    console.log('   To enforce validation in CI, set REQUIRE_ENV_VALIDATION=true\n');
     return;
   }
   
