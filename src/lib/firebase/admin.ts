@@ -19,11 +19,20 @@ import { getStorage, Storage } from 'firebase-admin/storage';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
-let adminApp: App | undefined;
-let adminDb: Firestore | undefined;
-let adminStorage: Storage | undefined;
-let initAttempted = false;
-let initFailed = false;
+// Use global cache for development hot reload persistence
+declare global {
+  var firebaseAdminApp: App | undefined;
+  var firebaseAdminDb: Firestore | undefined;
+  var firebaseAdminStorage: Storage | undefined;
+  var firebaseInitAttempted: boolean | undefined;
+  var firebaseInitFailed: boolean | undefined;
+}
+
+let adminApp: App | undefined = global.firebaseAdminApp;
+let adminDb: Firestore | undefined = global.firebaseAdminDb;
+let adminStorage: Storage | undefined = global.firebaseAdminStorage;
+let initAttempted = global.firebaseInitAttempted || false;
+let initFailed = global.firebaseInitFailed || false;
 
 /**
  * Get the Firebase Admin service account credentials
@@ -94,16 +103,19 @@ export function getAdminApp(): App | null {
   }
   
   initAttempted = true;
+  global.firebaseInitAttempted = true;
   
   const apps = getApps();
   if (apps.length > 0) {
     adminApp = apps[0];
+    global.firebaseAdminApp = adminApp;
     return adminApp;
   }
   
   const serviceAccount = getServiceAccount();
   if (!serviceAccount) {
     initFailed = true;
+    global.firebaseInitFailed = true;
     return null;
   }
   
@@ -112,11 +124,13 @@ export function getAdminApp(): App | null {
       credential: cert(serviceAccount),
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
+    global.firebaseAdminApp = adminApp;
     console.log('[Firebase Admin] ✓ Initialized successfully');
     return adminApp;
   } catch (error) {
     console.error('[Firebase Admin] Failed to initialize:', error);
     initFailed = true;
+    global.firebaseInitFailed = true;
     return null;
   }
 }
@@ -124,24 +138,24 @@ export function getAdminApp(): App | null {
 /**
  * Get the Firestore Admin database instance
  */
-let settingsApplied = false;
-
 export function getAdminDb(): Firestore | null {
+  // Return cached instance if available
   if (adminDb) return adminDb;
+  if (global.firebaseAdminDb) {
+    adminDb = global.firebaseAdminDb;
+    return adminDb;
+  }
   
   const app = getAdminApp();
   if (!app) return null;
   
   try {
+    // Get Firestore instance (this will reuse existing if already initialized)
     const db = getFirestore(app);
     
-    // Apply settings only once, before any other Firestore operations
-    if (!settingsApplied) {
-      db.settings({ ignoreUndefinedProperties: true });
-      settingsApplied = true;
-    }
-    
+    // Cache the instance
     adminDb = db;
+    global.firebaseAdminDb = db;
     return adminDb;
   } catch (error) {
     console.error('[Firebase Admin] Failed to get Firestore:', error);
@@ -154,12 +168,17 @@ export function getAdminDb(): Firestore | null {
  */
 export function getAdminStorage(): Storage | null {
   if (adminStorage) return adminStorage;
+  if (global.firebaseAdminStorage) {
+    adminStorage = global.firebaseAdminStorage;
+    return adminStorage;
+  }
   
   const app = getAdminApp();
   if (!app) return null;
   
   try {
     adminStorage = getStorage(app);
+    global.firebaseAdminStorage = adminStorage;
     return adminStorage;
   } catch (error) {
     console.error('[Firebase Admin] Failed to get Storage:', error);
