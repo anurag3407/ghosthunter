@@ -98,10 +98,14 @@ export async function POST(request: NextRequest) {
     } catch (webhookError) {
       console.error("Failed to create webhook:", webhookError);
       // Continue without webhook - user can add manually
+      console.warn("[GitHub Connect] Webhook creation failed, continuing without webhook");
     }
 
     // Get repo details
     const { data: repoDetails } = await octokit.repos.get({ owner, repo: name });
+
+    // Ensure repoId is stored as a number for consistent querying
+    const numericRepoId = typeof repoId === 'string' ? parseInt(repoId, 10) : repoId;
 
     // Create project in Firestore
     const projectRef = adminDb.collection("projects").doc();
@@ -109,7 +113,7 @@ export async function POST(request: NextRequest) {
       id: projectRef.id,
       userId,
       name,
-      githubRepoId: repoId,
+      githubRepoId: numericRepoId,  // Always store as number
       githubFullName: fullName || `${owner}/${name}`,
       githubOwner: owner,
       githubRepoName: name,
@@ -118,6 +122,7 @@ export async function POST(request: NextRequest) {
       webhookId,
       webhookSecret,
       webhookUrl,
+      status: 'active' as const,  // Vercel-style status
       isActive: true,
       rulesProfile: {
         strictness: "moderate",
@@ -139,6 +144,25 @@ export async function POST(request: NextRequest) {
 
     await projectRef.set(project);
 
+    // Also update the user document with GitHub connection info (optional but useful)
+    try {
+      const userRef = adminDb.collection("users").doc(userId);
+      const userDoc = await userRef.get();
+      if (userDoc.exists) {
+        await userRef.update({
+          githubConnected: true,
+          githubUsername: owner,
+          updatedAt: new Date(),
+        });
+      }
+    } catch (userUpdateError) {
+      console.warn("[GitHub Connect] Could not update user document:", userUpdateError);
+    }
+
+    console.log("[GitHub Connect] Successfully connected repository:", project.githubFullName);
+    console.log("[GitHub Connect] Webhook URL:", webhookUrl);
+    console.log("[GitHub Connect] Webhook ID:", webhookId);
+
     return NextResponse.json({
       success: true,
       project: {
@@ -146,6 +170,7 @@ export async function POST(request: NextRequest) {
         name: project.name,
         githubFullName: project.githubFullName,
         webhookConfigured: !!webhookId,
+        webhookUrl: webhookUrl,
       },
     });
   } catch (error) {

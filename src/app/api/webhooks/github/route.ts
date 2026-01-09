@@ -158,15 +158,42 @@ export async function POST(request: NextRequest) {
 
     console.log("[GitHub Webhook] Signature verified successfully");
 
-    // Get user's GitHub token
-    const userDoc = await adminDb.collection("users").doc(project.userId as string).get();
-    const githubToken = userDoc.data()?.githubAccessToken;
+    // Get user's GitHub token from Clerk (OAuth tokens are stored in Clerk, not Firestore)
+    let githubToken: string | null = null;
+    
+    try {
+      // Fetch GitHub OAuth token from Clerk
+      const clerkResponse = await fetch(
+        `https://api.clerk.com/v1/users/${project.userId}/oauth_access_tokens/oauth_github`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+          },
+        }
+      );
+
+      if (clerkResponse.ok) {
+        const tokens = await clerkResponse.json();
+        if (tokens && tokens.length > 0 && tokens[0].token) {
+          githubToken = tokens[0].token;
+        }
+      }
+    } catch (tokenError) {
+      console.error("[GitHub Webhook] Error fetching Clerk token:", tokenError);
+    }
+
+    // Fallback: Check if token was stored in user document (legacy)
+    if (!githubToken) {
+      const userDoc = await adminDb.collection("users").doc(project.userId as string).get();
+      githubToken = userDoc.data()?.githubAccessToken || null;
+    }
 
     if (!githubToken) {
       console.error("[GitHub Webhook] No GitHub token found for user:", project.userId);
-      return NextResponse.json({ error: "No GitHub token" }, { status: 400 });
+      return NextResponse.json({ error: "No GitHub token - please reconnect your GitHub account" }, { status: 400 });
     }
 
+    console.log("[GitHub Webhook] GitHub token obtained successfully");
     console.log("[GitHub Webhook] Processing event:", event);
 
     // Handle different events
@@ -295,7 +322,10 @@ async function handlePushEvent(
       info: allIssues.filter((i) => i.severity === "info").length,
     };
 
-    // Store issues
+    console.log("[Push Event] Issue counts:", issueCounts);
+    console.log("[Push Event] Total issues found:", allIssues.length);
+
+    // Store issues in Firestore
     const fullIssues: CodeIssue[] = allIssues.map((issue, idx) => ({
       ...issue,
       id: `${analysisRef.id}-${idx}`,
@@ -303,6 +333,20 @@ async function handlePushEvent(
       projectId: project.id,
       isMuted: false,
     }));
+
+    // Actually store the issues in the issues collection
+    if (fullIssues.length > 0) {
+      const issuesBatch = adminDb.batch();
+      for (const issue of fullIssues) {
+        const issueRef = adminDb.collection("issues").doc(issue.id);
+        issuesBatch.set(issueRef, {
+          ...issue,
+          createdAt: new Date(),
+        });
+      }
+      await issuesBatch.commit();
+      console.log("[Push Event] Stored", fullIssues.length, "issues in Firestore");
+    }
 
     // Generate summary
     const summary = await generateAnalysisSummary({
@@ -455,6 +499,9 @@ async function handlePREvent(
       info: allIssues.filter((i) => i.severity === "info").length,
     };
 
+    console.log("[PR Event] Issue counts:", issueCounts);
+    console.log("[PR Event] Total issues found:", allIssues.length);
+
     const fullIssues: CodeIssue[] = allIssues.map((issue, idx) => ({
       ...issue,
       id: `${analysisRef.id}-${idx}`,
@@ -462,6 +509,20 @@ async function handlePREvent(
       projectId: project.id,
       isMuted: false,
     }));
+
+    // Store issues in Firestore
+    if (fullIssues.length > 0) {
+      const issuesBatch = adminDb.batch();
+      for (const issue of fullIssues) {
+        const issueRef = adminDb.collection("issues").doc(issue.id);
+        issuesBatch.set(issueRef, {
+          ...issue,
+          createdAt: new Date(),
+        });
+      }
+      await issuesBatch.commit();
+      console.log("[PR Event] Stored", fullIssues.length, "issues in Firestore");
+    }
 
     const summary = await generateAnalysisSummary({
       repoName: `${owner}/${repo}`,

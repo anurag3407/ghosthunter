@@ -1,7 +1,9 @@
+"use client";
+
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { getAdminDb } from "@/lib/firebase/admin";
+import { useState, useEffect } from "react";
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import {
   Shield,
   Plus,
@@ -11,17 +13,16 @@ import {
   AlertTriangle,
   XCircle,
   ArrowRight,
+  Trash2,
+  Loader2,
 } from "lucide-react";
-
-// Force dynamic rendering to prevent build-time prerendering without env vars
-export const dynamic = 'force-dynamic';
 
 /**
  * ============================================================================
  * CODE POLICE - MAIN PAGE
  * ============================================================================
  * Lists all projects with Code Police enabled.
- * Fetches real data from Firestore.
+ * Fetches real data from Firestore via API.
  */
 
 interface Project {
@@ -31,7 +32,7 @@ interface Project {
   language: string | null;
   isActive: boolean;
   status: 'active' | 'paused' | 'stopped';
-  createdAt: Date;
+  createdAt: string;
 }
 
 interface AnalysisRun {
@@ -39,73 +40,45 @@ interface AnalysisRun {
   projectId: string;
   status: string;
   issueCounts: { critical: number; high: number; medium: number };
-  createdAt: Date;
+  createdAt: string;
 }
 
-export default async function CodePolicePage() {
-  const { userId } = await auth();
+export default function CodePolicePage() {
+  const { userId } = useAuth();
+  const router = useRouter();
+  const [projects, setProjects] = useState<(Project & { lastRun: AnalysisRun | null })[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!userId) {
-    redirect("/sign-in");
-  }
-
-  // Fetch projects from Firestore
-  let projects: Project[] = [];
-  const adminDb = getAdminDb();
-  
-  if (adminDb) {
-    try {
-      const projectsSnapshot = await adminDb
-        .collection("projects")
-        .where("userId", "==", userId)
-        .orderBy("createdAt", "desc")
-        .get();
-
-    projects = projectsSnapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        name: data.name,
-        githubFullName: data.githubFullName,
-        language: data.language,
-        isActive: data.isActive ?? true,
-        status: data.status || 'active',
-        createdAt: data.createdAt?.toDate?.() || new Date(),
-      };
-    });
-    } catch (error) {
-      console.error("Error fetching projects:", error);
+  useEffect(() => {
+    if (!userId) {
+      router.push("/sign-in");
+      return;
     }
-  }
 
-  // Fetch latest analysis run for each project
-  const projectsWithRuns = adminDb ? await Promise.all(
-    projects.map(async (project) => {
-      let lastRun: AnalysisRun | null = null;
-      try {
-        const runsSnapshot = await adminDb
-          .collection("analysis_runs")
-          .where("projectId", "==", project.id)
-          .orderBy("createdAt", "desc")
-          .limit(1)
-          .get();
+    fetchProjects();
+  }, [userId, router]);
 
-        if (!runsSnapshot.empty) {
-          const runData = runsSnapshot.docs[0].data();
-          lastRun = {
-            id: runsSnapshot.docs[0].id,
-            projectId: project.id,
-            status: runData.status,
-            issueCounts: runData.issueCounts || { critical: 0, high: 0, medium: 0 },
-            createdAt: runData.createdAt?.toDate?.() || new Date(),
-          };
-        }
-      } catch (error) {
-        // No runs found is fine
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('/api/code-police/projects');
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data.projects || []);
       }
-      return { ...project, lastRun };
-    })
-  ) : projects.map(p => ({ ...p, lastRun: null }));
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 text-red-400 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8 space-y-8">
@@ -132,12 +105,16 @@ export default async function CodePolicePage() {
       </div>
 
       {/* Projects List */}
-      {projectsWithRuns.length === 0 ? (
+      {projects.length === 0 ? (
         <EmptyState />
       ) : (
         <div className="grid gap-4">
-          {projectsWithRuns.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+          {projects.map((project) => (
+            <ProjectCard 
+              key={project.id} 
+              project={project}
+              onDisconnect={fetchProjects}
+            />
           ))}
         </div>
       )}
@@ -170,9 +147,48 @@ function EmptyState() {
 
 function ProjectCard({
   project,
+  onDisconnect,
 }: {
   project: Project & { lastRun: AnalysisRun | null };
+  onDisconnect: () => void;
 }) {
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleDisconnect = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!showConfirm) {
+      setShowConfirm(true);
+      return;
+    }
+
+    setIsDisconnecting(true);
+    try {
+      const response = await fetch('/api/code-police/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: project.id,
+          deleteAnalysisRuns: true,
+        }),
+      });
+
+      if (response.ok) {
+        onDisconnect();
+      } else {
+        alert('Failed to disconnect repository');
+      }
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+      alert('Failed to disconnect repository');
+    } finally {
+      setIsDisconnecting(false);
+      setShowConfirm(false);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
@@ -192,7 +208,8 @@ function ProjectCard({
       project.lastRun.issueCounts.medium
     : 0;
 
-  const formatDate = (date: Date) => {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -215,11 +232,11 @@ function ProjectCard({
   };
 
   return (
-    <Link
-      href={`/dashboard/code-police/${project.id}`}
-      className="group flex items-center justify-between p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl hover:border-zinc-700 transition-all"
-    >
-      <div className="flex items-center gap-4">
+    <div className="group flex items-center justify-between p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl hover:border-zinc-700 transition-all">
+      <Link
+        href={`/dashboard/code-police/${project.id}`}
+        className="flex items-center gap-4 flex-1"
+      >
         <div className="p-3 rounded-xl bg-zinc-800">
           <GitBranch className="w-5 h-5 text-zinc-400" />
         </div>
@@ -234,7 +251,7 @@ function ProjectCard({
           </div>
           <p className="text-sm text-zinc-500">{project.githubFullName}</p>
         </div>
-      </div>
+      </Link>
 
       <div className="flex items-center gap-6">
         {project.language && (
@@ -261,8 +278,49 @@ function ProjectCard({
         ) : (
           <span className="text-sm text-zinc-500">No runs yet</span>
         )}
-        <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+        
+        {/* Disconnect Button */}
+        <div className="flex items-center gap-2">
+          {showConfirm ? (
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <span className="text-sm text-zinc-400">Confirm?</span>
+              <button
+                onClick={handleDisconnect}
+                disabled={isDisconnecting}
+                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isDisconnecting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  'Yes'
+                )}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowConfirm(false);
+                }}
+                className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                No
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleDisconnect}
+              disabled={isDisconnecting}
+              className="p-2 hover:bg-zinc-800 rounded-lg transition-colors group/btn"
+              title="Disconnect repository"
+            >
+              <Trash2 className="w-4 h-4 text-zinc-500 group-hover/btn:text-red-400 transition-colors" />
+            </button>
+          )}
+        </div>
+
+        <Link href={`/dashboard/code-police/${project.id}`}>
+          <ArrowRight className="w-5 h-5 text-zinc-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+        </Link>
       </div>
-    </Link>
+    </div>
   );
 }

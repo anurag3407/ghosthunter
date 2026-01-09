@@ -4,7 +4,7 @@ import { getAdminDb } from "@/lib/firebase/admin";
 
 /**
  * GET /api/code-police/projects
- * List all projects for the authenticated user
+ * List all projects for the authenticated user with their latest analysis runs
  */
 export async function GET() {
   try {
@@ -25,12 +25,49 @@ export async function GET() {
       .orderBy("createdAt", "desc")
       .get();
 
-    const projects = projectsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const projects = projectsSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        githubFullName: data.githubFullName,
+        language: data.language,
+        isActive: data.isActive ?? true,
+        status: data.status || 'active',
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+      };
+    });
 
-    return NextResponse.json({ projects });
+    // Fetch latest analysis run for each project
+    const projectsWithRuns = await Promise.all(
+      projects.map(async (project) => {
+        let lastRun = null;
+        try {
+          const runsSnapshot = await adminDb
+            .collection('analysis_runs')
+            .where('projectId', '==', project.id)
+            .orderBy('createdAt', 'desc')
+            .limit(1)
+            .get();
+
+          if (!runsSnapshot.empty) {
+            const runData = runsSnapshot.docs[0].data();
+            lastRun = {
+              id: runsSnapshot.docs[0].id,
+              projectId: project.id,
+              status: runData.status,
+              issueCounts: runData.issueCounts || { critical: 0, high: 0, medium: 0 },
+              createdAt: runData.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            };
+          }
+        } catch (error) {
+          // No runs found is fine
+        }
+        return { ...project, lastRun };
+      })
+    );
+
+    return NextResponse.json({ projects: projectsWithRuns });
   } catch (error) {
     console.error("Error fetching projects:", error);
     return NextResponse.json(

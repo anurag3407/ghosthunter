@@ -54,15 +54,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's GitHub token from Firestore
-    const userDoc = await adminDb.collection("users").doc(userId).get();
-    const userData = userDoc.data();
-    const githubToken = userData?.githubAccessToken;
+    // Get user's GitHub token from Clerk OAuth (primary) or Firestore (fallback)
+    let githubToken: string | null = null;
+    
+    try {
+      // Fetch GitHub OAuth token from Clerk
+      const clerkResponse = await fetch(
+        `https://api.clerk.com/v1/users/${userId}/oauth_access_tokens/oauth_github`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+          },
+        }
+      );
+
+      if (clerkResponse.ok) {
+        const tokens = await clerkResponse.json();
+        if (tokens && tokens.length > 0 && tokens[0].token) {
+          githubToken = tokens[0].token;
+        }
+      }
+    } catch (tokenError) {
+      console.error("[Analyze] Error fetching Clerk token:", tokenError);
+    }
+
+    // Fallback: Check if token was stored in user document (legacy)
+    if (!githubToken) {
+      const userDoc = await adminDb.collection("users").doc(userId).get();
+      const userData = userDoc.data();
+      githubToken = userData?.githubAccessToken || null;
+    }
 
     if (!githubToken) {
       return NextResponse.json(
         {
-          error: "GitHub token not configured. Please connect GitHub in settings.",
+          error: "GitHub token not found. Please reconnect GitHub in settings.",
         },
         { status: 400 }
       );
@@ -170,7 +196,12 @@ export async function POST(request: NextRequest) {
     if (sendEmail) {
       try {
         // Use provided email or fall back to user's email from Firestore
-        const emailTo = recipientEmail || userData?.email;
+        let emailTo = recipientEmail;
+        
+        if (!emailTo) {
+          const userDoc = await adminDb.collection("users").doc(userId).get();
+          emailTo = userDoc.data()?.email;
+        }
         
         if (!emailTo) {
           console.warn("No email address available for notification");
