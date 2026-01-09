@@ -4,6 +4,9 @@ import { TextHoverEffect } from "@/components/ui/text-hover-effect";
 import FeaturesSectionDemo from "@/components/ui/features-section-demo-3";
 import AnimatedTestimonialsDemo from "@/components/ui/animated-testimonials-demo";
 
+// Force dynamic rendering - Header uses Clerk auth
+export const dynamic = 'force-dynamic';
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-black dark:bg-black">
