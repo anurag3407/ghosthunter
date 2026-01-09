@@ -54,18 +54,29 @@ export default function ConnectRepositoryPage() {
         const response = await fetch("/api/github/repos");
         const data = await response.json();
         
+        console.log("[ConnectRepo] API Response:", { 
+          status: response.status, 
+          connected: data.connected, 
+          repoCount: data.repos?.length || 0,
+          hasError: !!data.error,
+          message: data.message 
+        });
+        
         if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch repositories");
+          throw new Error(data.error || data.message || "Failed to fetch repositories");
         }
 
         setRepos(data.repos || []);
         setFilteredRepos(data.repos || []);
         setGithubConnected(data.connected);
         
-        if (!data.connected && data.message) {
-          setError(data.message);
+        if (!data.connected) {
+          setError(data.message || "GitHub not connected. Please connect your GitHub account in Settings.");
+        } else if (data.repos && data.repos.length === 0) {
+          setError("No repositories found. Make sure your GitHub account has repositories.");
         }
       } catch (err) {
+        console.error("[ConnectRepo] Error:", err);
         setError(err instanceof Error ? err.message : "Failed to load repositories");
       } finally {
         setIsLoading(false);

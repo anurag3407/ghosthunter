@@ -11,6 +11,7 @@ export async function GET() {
     const { userId } = await auth();
     
     if (!userId) {
+      console.log("[GitHub:Repos] Unauthorized - no userId");
       return NextResponse.json({ 
         repos: [], 
         connected: false, 
@@ -23,12 +24,18 @@ export async function GET() {
     let githubToken: string | null = null;
     
     try {
-      const tokens = await clerk.users.getUserOauthAccessToken(userId, "github");
+      const tokens = await clerk.users.getUserOauthAccessToken(userId, "oauth_github");
+      console.log("[GitHub:Repos] Tokens response:", { 
+        hasData: !!tokens.data, 
+        tokenCount: tokens.data?.length || 0 
+      });
+      
       if (tokens.data && tokens.data.length > 0) {
         githubToken = tokens.data[0].token;
+        console.log("[GitHub:Repos] GitHub token found");
       }
     } catch (error) {
-      console.log("[GitHub:Repos] No GitHub OAuth token found:", error);
+      console.error("[GitHub:Repos] Error fetching OAuth token:", error);
       return NextResponse.json({
         repos: [],
         connected: false,
@@ -38,6 +45,7 @@ export async function GET() {
     }
 
     if (!githubToken) {
+      console.log("[GitHub:Repos] No GitHub token available");
       return NextResponse.json({
         repos: [],
         connected: false,
@@ -49,11 +57,14 @@ export async function GET() {
     // Fetch repositories from GitHub
     const octokit = new Octokit({ auth: githubToken });
     
+    console.log("[GitHub:Repos] Fetching repos from GitHub...");
     const { data: repos } = await octokit.repos.listForAuthenticatedUser({
       sort: "updated",
       per_page: 100,
       affiliation: "owner,collaborator,organization_member",
     });
+
+    console.log(`[GitHub:Repos] Found ${repos.length} repositories`);
 
     // Transform to frontend format
     const repositories = repos.map((repo) => ({
