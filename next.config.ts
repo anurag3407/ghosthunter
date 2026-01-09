@@ -15,8 +15,6 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SEPOLIA_RPC_URL: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL,
     NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS: process.env.NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS,
   },
-  // Output standalone for optimal Docker/Railway deployment
-  output: 'standalone',
   // Optimize image handling
   images: {
     remotePatterns: [
@@ -25,6 +23,10 @@ const nextConfig: NextConfig = {
         hostname: '**',
       },
     ],
+  },
+  // Disable telemetry
+  experimental: {
+    // Improve build performance
   },
 };
 

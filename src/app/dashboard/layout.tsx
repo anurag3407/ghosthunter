@@ -2,6 +2,9 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/shell";
 
+// Force dynamic rendering for all dashboard pages - requires Clerk auth at runtime
+export const dynamic = 'force-dynamic';
+
 /**
  * ============================================================================
  * DASHBOARD LAYOUT

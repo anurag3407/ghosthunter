@@ -2,6 +2,9 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getAdminDb } from "@/lib/firebase/admin";
+
+// Force dynamic rendering - requires Clerk auth at runtime
+export const dynamic = 'force-dynamic';
 import {
   Database,
   Plus,
