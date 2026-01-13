@@ -52,7 +52,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new BrowserProvider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
-      
+
       const network = await provider.getNetwork();
       setChainId(Number(network.chainId));
 
@@ -61,9 +61,23 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
       setSigner(walletSigner);
       setAddress(walletAddress);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to connect wallet";
-      setError(message);
+    } catch (err: unknown) {
+      // Handle specific MetaMask errors
+      const errorWithCode = err as { code?: number; message?: string };
+
+      if (errorWithCode.code === 4001) {
+        // User rejected the connection request
+        setError("Connection rejected. Please approve the connection in MetaMask.");
+      } else if (errorWithCode.code === -32002) {
+        // Request already pending
+        setError("A connection request is already pending. Please open MetaMask and approve it.");
+      } else if (errorWithCode.code === -32603) {
+        // Internal JSON-RPC error
+        setError("MetaMask encountered an error. Please try again.");
+      } else {
+        const message = err instanceof Error ? err.message : "Failed to connect wallet";
+        setError(message);
+      }
       console.error("Wallet connection error:", err);
     } finally {
       setIsConnecting(false);

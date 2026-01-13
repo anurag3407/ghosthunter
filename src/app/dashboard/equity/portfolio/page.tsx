@@ -80,11 +80,11 @@ export default function PortfolioPage() {
   const pathname = usePathname();
   const { address, isConnected, connect, chainId, isConnecting, switchToSepolia } = useWallet();
   const isOnSepolia = chainId === SEPOLIA_CHAIN_ID_NUM;
-  
+
   // API data (project metadata from Firestore)
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Blockchain data (token balances from wallet)
   const [walletData, setWalletData] = useState<WalletTokenData | null>(null);
   const [isLoadingWallet, setIsLoadingWallet] = useState(false);
@@ -120,7 +120,7 @@ export default function PortfolioPage() {
 
     try {
       const { signer } = await connectWallet();
-      
+
       // Fetch all data from blockchain in parallel
       const [balance, hasMinted, tokenInfo] = await Promise.all([
         getDisplayBalance(signer, address),
@@ -144,8 +144,8 @@ export default function PortfolioPage() {
     } catch (error) {
       console.error("Error fetching wallet data:", error);
       setWalletError(
-        error instanceof Error 
-          ? error.message 
+        error instanceof Error
+          ? error.message
           : "Failed to fetch token data from blockchain"
       );
     } finally {
@@ -163,13 +163,13 @@ export default function PortfolioPage() {
   // Calculate ownership distribution for pie chart (from wallet data)
   const calculateDistribution = () => {
     if (!walletData || !walletData.hasMinted) return [];
-    
+
     const yourBalance = parseInt(walletData.balance) || 0;
     const totalSupply = parseFloat(walletData.totalSupply) || 1000000;
     const othersBalance = totalSupply - yourBalance;
 
     const distribution = [];
-    
+
     if (yourBalance > 0) {
       distribution.push({
         name: "Your Holdings",
@@ -178,7 +178,7 @@ export default function PortfolioPage() {
         color: "from-purple-500 to-pink-500",
       });
     }
-    
+
     if (othersBalance > 0) {
       distribution.push({
         name: "Others",
@@ -265,8 +265,8 @@ export default function PortfolioPage() {
               href={tab.href}
               className={`
                 px-5 py-2.5 rounded-xl text-sm font-medium transition-all
-                ${isActive 
-                  ? "bg-zinc-800 text-white shadow-sm" 
+                ${isActive
+                  ? "bg-zinc-800 text-white shadow-sm"
                   : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
                 }
               `}
@@ -484,7 +484,7 @@ export default function PortfolioPage() {
                         <ExternalLink className="w-5 h-5" />
                       </a>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-6">
                       <div>
                         <p className="text-sm text-zinc-400 mb-1">Your Balance</p>
@@ -545,10 +545,15 @@ export default function PortfolioPage() {
               </h2>
               <div className="space-y-4">
                 {portfolio.ownedProjects.map((project) => (
-                  <Link
+                  <div
                     key={project.id}
-                    href={`/dashboard/equity/${project.id}`}
-                    className="flex items-center justify-between p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl hover:border-purple-500/30 transition-all"
+                    onClick={(e) => {
+                      // Don't navigate if clicking on the Etherscan link
+                      const target = e.target as HTMLElement;
+                      if (target.closest('a')) return;
+                      window.location.href = `/dashboard/equity/${project.id}`;
+                    }}
+                    className="flex items-center justify-between p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl hover:border-purple-500/30 transition-all cursor-pointer"
                   >
                     <div className="flex items-center gap-4">
                       <div className="p-3 rounded-xl bg-purple-500/10">
@@ -583,7 +588,7 @@ export default function PortfolioPage() {
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             </div>

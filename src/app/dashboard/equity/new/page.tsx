@@ -111,22 +111,24 @@ export default function NewEquityProjectPage() {
 
     try {
       const { signer } = await connectWallet();
-      
+
       // Check if already minted on contract
       const alreadyMinted = await hasUserMinted(signer, address!);
+      let hash = "";
+
       if (alreadyMinted) {
+        // Wallet has already minted tokens - that's okay!
+        // We'll still create the project in the database
         const balance = await getDisplayBalance(signer, address!);
-        setMintStatus("success");
-        setTxHash("Already minted - Balance: " + balance + " tokens");
-        setCurrentStep("complete");
-        return;
+        hash = `wallet-has-${balance}-tokens`;
+      } else {
+        // Mint tokens on blockchain - this triggers MetaMask
+        hash = await mintInitialTokens(signer);
       }
 
-      // Mint tokens
-      const hash = await mintInitialTokens(signer);
       setTxHash(hash);
 
-      // Save project to database
+      // Save project to database (always - this enables multi-project support)
       const projectResponse = await fetch("/api/equity/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -147,23 +149,27 @@ export default function NewEquityProjectPage() {
         throw new Error(data.error || "Failed to save project");
       }
 
-      // Record mint transaction
-      await fetch("/api/equity/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: (await projectResponse.json()).project?.id,
-          type: "mint",
-          from: "0x0000000000000000000000000000000000000000",
-          to: address,
-          amount: "1000000",
-          txHash: hash,
-        }),
-      });
+      const projectData = await projectResponse.json();
+
+      // Record mint transaction (only if we actually minted)
+      if (!alreadyMinted && hash.startsWith("0x")) {
+        await fetch("/api/equity/transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId: projectData.project?.id,
+            type: "mint",
+            from: "0x0000000000000000000000000000000000000000",
+            to: address,
+            amount: "1000000",
+            txHash: hash,
+          }),
+        });
+      }
 
       setMintStatus("success");
       setCurrentStep("complete");
-      
+
       // Redirect after delay
       setTimeout(() => {
         router.push("/dashboard/equity");
@@ -211,11 +217,11 @@ export default function NewEquityProjectPage() {
           <div key={step.id} className="flex items-center">
             <div className={`
               flex items-center gap-2 px-4 py-2 rounded-xl
-              ${step.completed 
-                ? "bg-purple-500/10 text-purple-400" 
+              ${step.completed
+                ? "bg-purple-500/10 text-purple-400"
                 : step.id === currentStep
-                ? "bg-zinc-800 text-white"
-                : "bg-zinc-900/50 text-zinc-500"
+                  ? "bg-zinc-800 text-white"
+                  : "bg-zinc-900/50 text-zinc-500"
               }
             `}>
               {step.completed ? (
@@ -343,7 +349,7 @@ export default function NewEquityProjectPage() {
                   <div>
                     <p className="font-medium text-white">Wallet Status</p>
                     <p className="text-sm text-zinc-400">
-                      {isConnected 
+                      {isConnected
                         ? `Connected: ${address?.slice(0, 6)}...${address?.slice(-4)}`
                         : "Not connected"}
                     </p>
@@ -447,11 +453,16 @@ export default function NewEquityProjectPage() {
             <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/10 flex items-center justify-center">
               <CheckCircle2 className="w-10 h-10 text-green-400" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Tokens Minted Successfully!</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {txHash.startsWith("0x") ? "Tokens Minted Successfully!" : "Project Added Successfully!"}
+            </h2>
             <p className="text-zinc-400 mb-6">
-              You now have 1,000,000 equity tokens for {selectedRepo?.full_name}
+              {txHash.startsWith("0x")
+                ? `You now have 1,000,000 equity tokens for ${selectedRepo?.full_name}`
+                : `Project ${selectedRepo?.full_name} has been added to your portfolio`
+              }
             </p>
-            {txHash.startsWith("0x") && (
+            {txHash.startsWith("0x") ? (
               <a
                 href={`https://sepolia.etherscan.io/tx/${txHash}`}
                 target="_blank"
@@ -460,6 +471,10 @@ export default function NewEquityProjectPage() {
               >
                 View on Etherscan →
               </a>
+            ) : (
+              <p className="text-sm text-purple-400 mb-8">
+                Your wallet already has tokens. You can distribute them across your projects.
+              </p>
             )}
             <p className="text-sm text-zinc-500">Redirecting to dashboard...</p>
           </div>
