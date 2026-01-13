@@ -7,7 +7,7 @@ import {
   userOwnsConversation,
   updateConversationTitle,
 } from "@/lib/agents/database/conversations";
-import { generateQueryResponse, type HistoryItem } from "@/lib/agents/database/agent";
+import { generateQueryResponseCached, type HistoryItem } from "@/lib/agents/database/agent";
 import { decrypt } from "@/lib/agents/database/encryption";
 import { executeQuery, formatQueryResults } from "@/lib/agents/database/query-executor";
 
@@ -25,7 +25,7 @@ import { executeQuery, formatQueryResults } from "@/lib/agents/database/query-ex
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     // Get previous messages for context
     const previousMessages = await getConversationMessages(conversationId);
-    
+
     // Convert to HistoryItem format for agent
     const history: HistoryItem[] = previousMessages.slice(-5).map(m => ({
       role: m.role as "user" | "assistant",
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // Decrypt connection string
     let connectionString: string;
-    
+
     if (connection.encryptedUri) {
       // New format: encrypted connection string
       connectionString = decrypt(connection.encryptedUri);
@@ -144,13 +144,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate query using Universal Agent
-    const agentResponse = await generateQueryResponse(message, connectionString, history);
+    // Generate query using Universal Agent (with cached schema for performance)
+    const agentResponse = await generateQueryResponseCached(message, connectionId, connectionString, history);
 
     // Format response message
     let assistantMessage: string;
     let queryResults: Record<string, unknown>[] | null = null;
-    
+
     if (agentResponse.type === "blocked") {
       assistantMessage = `⚠️ **Safety Block**\n\n${agentResponse.content}`;
       if (agentResponse.warnings?.length) {
@@ -163,27 +163,27 @@ export async function POST(request: NextRequest) {
     } else {
       // Query type - generate AND execute the query
       assistantMessage = agentResponse.explanation || agentResponse.content;
-      
+
       if (agentResponse.query) {
         const queryLang = connection.type === "mongodb" ? "json" : "sql";
         assistantMessage += `\n\n**Generated Query:**\n\`\`\`${queryLang}\n${agentResponse.query}\n\`\`\``;
-        
+
         // Execute the query
         try {
           const result = await executeQuery(connectionString, agentResponse.query);
           queryResults = result.data;
-          
+
           // Add execution results to message
           assistantMessage += `\n\n${formatQueryResults(result)}`;
         } catch (execError) {
           assistantMessage += `\n\n❌ **Execution Error**: ${execError instanceof Error ? execError.message : "Failed to execute query"}`;
         }
       }
-      
+
       if (agentResponse.assumptions?.length) {
         assistantMessage += `\n\n**Assumptions:**\n${agentResponse.assumptions.map(a => `- ${a}`).join("\n")}`;
       }
-      
+
       if (agentResponse.warnings?.length) {
         assistantMessage += `\n\n**⚠️ Warnings:**\n${agentResponse.warnings.map(w => `- ${w}`).join("\n")}`;
       }
