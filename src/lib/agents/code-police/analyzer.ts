@@ -175,6 +175,12 @@ export async function analyzeCode(input: {
 
     const result = await structuredModel.invoke(formattedPrompt);
 
+    // Handle case where result might be null or undefined
+    if (!result || typeof result !== 'object') {
+      console.warn("[Analyzer] ⚠️ Invalid response from AI model");
+      return [];
+    }
+
     console.log(`[Analyzer] ✓ Gemini response received, ${result.issues?.length || 0} issues found`);
 
     const mappedIssues = (result.issues || []).map((issue) => ({
@@ -191,9 +197,17 @@ export async function analyzeCode(input: {
     }));
 
     return mappedIssues;
-  } catch (error) {
-    console.error("[Analyzer] ❌ Code analysis failed:", error);
-    console.error("[Analyzer] Error details:", error instanceof Error ? error.message : String(error));
+  } catch (error: unknown) {
+    // Handle specific LangChain structured output errors
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isPayloadError = errorMessage.includes('payload') ||
+      errorMessage.includes('Cannot read properties of undefined');
+
+    if (isPayloadError) {
+      console.warn("[Analyzer] ⚠️ AI returned malformed response, continuing with empty issues");
+    } else {
+      console.error("[Analyzer] ❌ Code analysis failed:", errorMessage);
+    }
     // Return empty array instead of throwing to allow other files to continue
     return [];
   }
@@ -235,7 +249,7 @@ export async function generateAnalysisSummary(input: {
   const prompt = PromptTemplate.fromTemplate(SUMMARY_PROMPT);
   const formattedPrompt = await prompt.format({
     repoName: input.repoName,
-    commitSha: input.commitSha.slice(0, 7),
+    commitSha: (input.commitSha || 'unknown').slice(0, 7),
     branch: input.branch,
     criticalCount: counts.critical,
     highCount: counts.high,

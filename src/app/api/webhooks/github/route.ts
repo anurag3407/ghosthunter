@@ -7,6 +7,7 @@ import {
   generateAnalysisSummary,
 } from "@/lib/agents/code-police/analyzer";
 import { sendAnalysisReport } from "@/lib/agents/code-police/email";
+import { generateAndCreateFixPR } from "@/lib/agents/code-police/auto-fix";
 import { fetchCommit, fetchFileContent, postPRComment, formatPRComment, getDependentFiles } from "@/lib/agents/code-police/github";
 import type { CodeIssue, IssueSeverity, ProjectStatus } from "@/types";
 
@@ -463,6 +464,50 @@ async function handlePushEvent(
       }
 
       await analysisRef.update({ emailStatus: "sent" });
+    }
+
+    // Auto-fix: Generate fixes and create PR if enabled
+    if ((project.autoFixEnabled as boolean | undefined) && fullIssues.length > 0) {
+      console.log("[Push Event] Auto-fix enabled, generating fixes...");
+
+      try {
+        const autoFixResult = await generateAndCreateFixPR({
+          githubToken,
+          owner,
+          repo,
+          branch,
+          commitSha,
+          issues: fullIssues,
+          analysisRunId: analysisRef.id,
+          severityFilter: ["critical", "high", "medium"],
+        });
+
+        if (autoFixResult.success) {
+          console.log(`[Push Event] Auto-fix PR created: ${autoFixResult.prUrl}`);
+          await analysisRef.update({
+            autoFixPrUrl: autoFixResult.prUrl,
+            autoFixPrNumber: autoFixResult.prNumber,
+            autoFixBranch: autoFixResult.branchName,
+            autoFixesGenerated: autoFixResult.fixesGenerated,
+            autoFixFilesChanged: autoFixResult.filesChanged,
+          });
+        } else {
+          console.log(`[Push Event] Auto-fix did not create PR: ${autoFixResult.error}`);
+          if (autoFixResult.fixesGenerated > 0) {
+            await analysisRef.update({
+              autoFixAttempted: true,
+              autoFixError: autoFixResult.error,
+              autoFixesGenerated: autoFixResult.fixesGenerated,
+            });
+          }
+        }
+      } catch (autoFixError) {
+        console.error("[Push Event] Auto-fix error:", autoFixError);
+        await analysisRef.update({
+          autoFixAttempted: true,
+          autoFixError: autoFixError instanceof Error ? autoFixError.message : "Auto-fix failed",
+        });
+      }
     }
   } catch (error) {
     console.error("Push event analysis failed:", error);

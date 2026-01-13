@@ -13,6 +13,7 @@ import {
   Bell,
   Mail,
   AlertCircle,
+  Zap,
 } from "lucide-react";
 
 interface ProjectSettingsProps {
@@ -21,6 +22,7 @@ interface ProjectSettingsProps {
     status: 'active' | 'paused' | 'stopped';
     customRules: string[];
     ownerEmail?: string;
+    autoFixEnabled?: boolean;
     notificationPrefs?: {
       emailOnPush?: boolean;
       emailOnPR?: boolean;
@@ -37,28 +39,29 @@ export function ProjectSettings({ project, onUpdate, onClose }: ProjectSettingsP
   const [customRules, setCustomRules] = useState<string[]>(project.customRules || []);
   const [newRule, setNewRule] = useState("");
   const [emailOnPush, setEmailOnPush] = useState(project.notificationPrefs?.emailOnPush ?? true);
+  const [autoFixEnabled, setAutoFixEnabled] = useState(project.autoFixEnabled ?? false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
   const statusOptions = [
-    { 
-      value: 'active' as const, 
-      label: 'Active', 
-      icon: Play, 
+    {
+      value: 'active' as const,
+      label: 'Active',
+      icon: Play,
       color: 'text-green-400 bg-green-500/10 border-green-500/30',
       description: 'Analyzing every push and PR'
     },
-    { 
-      value: 'paused' as const, 
-      label: 'Paused', 
-      icon: Pause, 
+    {
+      value: 'paused' as const,
+      label: 'Paused',
+      icon: Pause,
       color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
       description: 'Webhooks received but ignored'
     },
-    { 
-      value: 'stopped' as const, 
-      label: 'Stopped', 
-      icon: Square, 
+    {
+      value: 'stopped' as const,
+      label: 'Stopped',
+      icon: Square,
       color: 'text-red-400 bg-red-500/10 border-red-500/30',
       description: 'No analysis, webhook removed'
     },
@@ -78,16 +81,17 @@ export function ProjectSettings({ project, onUpdate, onClose }: ProjectSettingsP
   const handleSave = async () => {
     setIsSaving(true);
     setError("");
-    
+
     try {
       await onUpdate({
         status,
         customRules,
+        autoFixEnabled,
         notificationPrefs: {
           ...project.notificationPrefs,
           emailOnPush,
         },
-      });
+      } as Partial<ProjectSettingsProps['project']>);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
@@ -127,11 +131,10 @@ export function ProjectSettings({ project, onUpdate, onClose }: ProjectSettingsP
                 <button
                   key={option.value}
                   onClick={() => setStatus(option.value)}
-                  className={`p-3 rounded-xl border transition-all ${
-                    status === option.value
+                  className={`p-3 rounded-xl border transition-all ${status === option.value
                       ? option.color + ' border-2'
                       : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
-                  }`}
+                    }`}
                 >
                   <option.icon className="w-5 h-5 mx-auto mb-1" />
                   <p className="text-sm font-medium">{option.label}</p>
@@ -151,7 +154,7 @@ export function ProjectSettings({ project, onUpdate, onClose }: ProjectSettingsP
             <p className="text-xs text-zinc-500 mb-3">
               Define specific rules for the AI to enforce (e.g., &ldquo;No console.logs&rdquo;, &ldquo;All functions must have JSDoc&rdquo;)
             </p>
-            
+
             {/* Rules List */}
             <div className="space-y-2 mb-3">
               {customRules.map((rule, index) => (
@@ -190,13 +193,47 @@ export function ProjectSettings({ project, onUpdate, onClose }: ProjectSettingsP
             </div>
           </div>
 
+          {/* Auto-Fix */}
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-3">
+              <Zap className="w-4 h-4 inline mr-2" />
+              Auto-Fix
+            </label>
+
+            <label className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg cursor-pointer">
+              <div className="flex items-center gap-3">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                <div>
+                  <span className="text-sm text-zinc-300">Auto-fix on push</span>
+                  <p className="text-xs text-zinc-500">Automatically create PR with fixes</p>
+                </div>
+              </div>
+              <div
+                onClick={() => setAutoFixEnabled(!autoFixEnabled)}
+                className={`w-10 h-6 rounded-full p-1 transition-colors cursor-pointer ${autoFixEnabled ? 'bg-emerald-500' : 'bg-zinc-600'
+                  }`}
+              >
+                <div
+                  className={`w-4 h-4 rounded-full bg-white transition-transform ${autoFixEnabled ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                />
+              </div>
+            </label>
+            {autoFixEnabled && (
+              <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                PRs will be created automatically after every push with issues
+              </p>
+            )}
+          </div>
+
           {/* Notifications */}
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-3">
               <Bell className="w-4 h-4 inline mr-2" />
               Notifications
             </label>
-            
+
             <label className="flex items-center justify-between p-3 bg-zinc-800 rounded-lg cursor-pointer">
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-zinc-400" />
@@ -204,14 +241,12 @@ export function ProjectSettings({ project, onUpdate, onClose }: ProjectSettingsP
               </div>
               <div
                 onClick={() => setEmailOnPush(!emailOnPush)}
-                className={`w-10 h-6 rounded-full p-1 transition-colors cursor-pointer ${
-                  emailOnPush ? 'bg-red-500' : 'bg-zinc-600'
-                }`}
+                className={`w-10 h-6 rounded-full p-1 transition-colors cursor-pointer ${emailOnPush ? 'bg-red-500' : 'bg-zinc-600'
+                  }`}
               >
                 <div
-                  className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                    emailOnPush ? 'translate-x-4' : 'translate-x-0'
-                  }`}
+                  className={`w-4 h-4 rounded-full bg-white transition-transform ${emailOnPush ? 'translate-x-4' : 'translate-x-0'
+                    }`}
                 />
               </div>
             </label>

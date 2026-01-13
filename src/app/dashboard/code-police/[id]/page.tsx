@@ -46,6 +46,7 @@ interface Project {
   status: 'active' | 'paused' | 'stopped';
   customRules: string[];
   ownerEmail?: string;
+  autoFixEnabled?: boolean;
   notificationPrefs?: {
     emailOnPush?: boolean;
     emailOnPR?: boolean;
@@ -67,6 +68,12 @@ interface AnalysisRun {
   summary?: string;
   createdAt: string;
   completedAt?: string;
+  // Auto-fix fields
+  autoFixPrUrl?: string;
+  autoFixPrNumber?: number;
+  autoFixesGenerated?: number;
+  autoFixFilesChanged?: number;
+  autoFixError?: string;
 }
 
 interface CodeIssue {
@@ -548,31 +555,51 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                     <p className="text-sm text-zinc-400">{run.summary}</p>
                   )}
 
-                  {/* Fix with PR Button */}
+                  {/* Auto-fix PR (from webhook) or Manual Fix with PR Button */}
                   {run.status === 'completed' && (Object.values(run.issueCounts || {}).reduce((a, b) => a + b, 0) > 0) && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => createFixPR(run.id)}
-                        disabled={isCreatingPR === run.id}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                      >
-                        {isCreatingPR === run.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <GitPullRequest className="w-4 h-4" />
-                        )}
-                        {isCreatingPR === run.id ? 'Creating PR...' : 'Fix with PR'}
-                      </button>
-                      {(run as unknown as { prUrl?: string }).prUrl && (
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {/* Show auto-fix PR if available */}
+                      {run.autoFixPrUrl && (
                         <a
-                          href={(run as unknown as { prUrl: string }).prUrl}
+                          href={run.autoFixPrUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300"
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg hover:from-emerald-500 hover:to-green-500 transition-all"
                         >
+                          <GitPullRequest className="w-4 h-4" />
+                          Auto-fix PR #{run.autoFixPrNumber}
                           <ExternalLink className="w-4 h-4" />
-                          View PR
                         </a>
+                      )}
+
+                      {/* Manual Fix with PR button (only show if no auto-fix PR) */}
+                      {!run.autoFixPrUrl && (
+                        <button
+                          onClick={() => createFixPR(run.id)}
+                          disabled={isCreatingPR === run.id}
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg hover:from-emerald-500 hover:to-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                          {isCreatingPR === run.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <GitPullRequest className="w-4 h-4" />
+                          )}
+                          {isCreatingPR === run.id ? 'Creating PR...' : 'Fix with PR'}
+                        </button>
+                      )}
+
+                      {/* Show auto-fix stats if available */}
+                      {run.autoFixesGenerated !== undefined && run.autoFixesGenerated > 0 && (
+                        <span className="text-xs text-zinc-500">
+                          {run.autoFixesGenerated} fixes, {run.autoFixFilesChanged || 0} files changed
+                        </span>
+                      )}
+
+                      {/* Show auto-fix error if it failed */}
+                      {run.autoFixError && !run.autoFixPrUrl && (
+                        <span className="text-xs text-amber-400">
+                          Auto-fix: {run.autoFixError}
+                        </span>
                       )}
                     </div>
                   )}
@@ -657,6 +684,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             status: project.status,
             customRules: project.customRules || [],
             ownerEmail: project.ownerEmail,
+            autoFixEnabled: project.autoFixEnabled,
             notificationPrefs: project.notificationPrefs,
           }}
           onUpdate={handleUpdateProject}

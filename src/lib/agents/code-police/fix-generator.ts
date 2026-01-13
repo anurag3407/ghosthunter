@@ -373,6 +373,12 @@ async function generateFixesInternal(
     try {
         const result = await structuredModel.invoke(formattedPrompt);
 
+        // Handle case where result might be null or undefined
+        if (!result || typeof result !== 'object') {
+            console.warn(`[FixGenerator] Attempt ${attempt}: Invalid response from AI model`);
+            return { fixes: [] };
+        }
+
         // Force all fixes to be auto-applicable if the AI didn't set it
         const fixes = (result.fixes || []).map(fix => ({
             ...fix,
@@ -386,8 +392,17 @@ async function generateFixesInternal(
         return {
             fixes,
         };
-    } catch (error) {
-        console.error(`[FixGenerator] Attempt ${attempt} error:`, error);
+    } catch (error: unknown) {
+        // Handle specific LangChain structured output errors
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isPayloadError = errorMessage.includes('payload') ||
+            errorMessage.includes('Cannot read properties of undefined');
+
+        if (isPayloadError) {
+            console.warn(`[FixGenerator] Attempt ${attempt}: AI returned malformed response, retrying...`);
+        } else {
+            console.error(`[FixGenerator] Attempt ${attempt} error:`, errorMessage);
+        }
         return { fixes: [] };
     }
 }
