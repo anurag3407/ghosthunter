@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     // Get user's GitHub token from Clerk OAuth (primary) or Firestore (fallback)
     let githubToken: string | null = null;
-    
+
     try {
       // Fetch GitHub OAuth token from Clerk
       const clerkResponse = await fetch(
@@ -117,33 +117,142 @@ export async function POST(request: NextRequest) {
     // Fetch commit details
     const commit = await fetchCommit(githubToken, owner, repo, commitSha);
 
-    // Analyze changed files from commit
-    const allIssues: Omit<CodeIssue, "id" | "analysisRunId" | "projectId" | "isMuted">[] = [];
+    // ========================================================================
+    // FILE FILTERING - Exclude non-source files from analysis
+    // ========================================================================
 
-    for (const file of commit.files) {
+    // Patterns to exclude (directories and file patterns)
+    const EXCLUDED_PATTERNS = [
+      /^node_modules\//,
+      /^\.git\//,
+      /^dist\//,
+      /^build\//,
+      /^\.next\//,
+      /^out\//,
+      /^coverage\//,
+      /^\.cache\//,
+      /^vendor\//,
+      /\.min\.(js|css)$/,
+      /\.bundle\.(js|css)$/,
+      /package-lock\.json$/,
+      /yarn\.lock$/,
+      /pnpm-lock\.yaml$/,
+      /bun\.lockb$/,
+      /\.lock$/,
+      /\.map$/,
+      /\.d\.ts$/,
+      /\.generated\./,
+      /\.snap$/,
+    ];
+
+    // File extensions that are not source code
+    const EXCLUDED_EXTENSIONS = [
+      '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.bmp',
+      '.woff', '.woff2', '.ttf', '.eot', '.otf',
+      '.mp3', '.mp4', '.wav', '.ogg', '.webm', '.avi',
+      '.pdf', '.zip', '.tar', '.gz', '.rar', '.7z',
+      '.exe', '.dll', '.so', '.dylib',
+      '.bin', '.dat', '.db', '.sqlite',
+    ];
+
+    // Analyzable source file extensions
+    const ANALYZABLE_EXTENSIONS = [
+      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+      '.py', '.rb', '.go', '.rs', '.java', '.kt', '.swift',
+      '.c', '.cpp', '.h', '.hpp', '.cs',
+      '.php', '.sql', '.sol',
+      '.vue', '.svelte',
+    ];
+
+    /**
+     * Check if a file should be analyzed
+     */
+    function shouldAnalyzeFile(filename: string): boolean {
+      // Check excluded patterns
+      for (const pattern of EXCLUDED_PATTERNS) {
+        if (pattern.test(filename)) {
+          console.log(`[Analyze] ⏭️ Skipping (pattern): ${filename}`);
+          return false;
+        }
+      }
+
+      // Check excluded extensions (binary/non-source files)
+      const ext = '.' + (filename.split('.').pop()?.toLowerCase() || '');
+      if (EXCLUDED_EXTENSIONS.includes(ext)) {
+        console.log(`[Analyze] ⏭️ Skipping (binary): ${filename}`);
+        return false;
+      }
+
+      // Only analyze known source file extensions
+      if (!ANALYZABLE_EXTENSIONS.includes(ext)) {
+        console.log(`[Analyze] ⏭️ Skipping (unknown type): ${filename}`);
+        return false;
+      }
+
+      return true;
+    }
+
+    // Analyze changed files from commit (filtered)
+    const allIssues: Omit<CodeIssue, "id" | "analysisRunId" | "projectId" | "isMuted">[] = [];
+    const analyzedFiles: string[] = [];
+    const skippedFiles: string[] = [];
+
+    // Ensure commit.files exists
+    const commitFiles = commit.files || [];
+    console.log(`[Analyze] Commit ${commitSha}: ${commitFiles.length} files changed`);
+
+    if (commitFiles.length === 0) {
+      console.log(`[Analyze] ⚠️ No files in commit to analyze`);
+    }
+
+    for (const file of commitFiles) {
+      // Skip removed files
       if (file.status === "removed") continue;
 
-      // Get file content
-      const content = await fetchFileContent(
-        githubToken,
-        owner,
-        repo,
-        file.filename,
-        commitSha
-      );
+      // Apply file filtering
+      if (!shouldAnalyzeFile(file.filename)) {
+        skippedFiles.push(file.filename);
+        continue;
+      }
 
-      const language = detectLanguage(file.filename);
+      try {
+        // Get file content
+        const content = await fetchFileContent(
+          githubToken,
+          owner,
+          repo,
+          file.filename,
+          commitSha
+        );
 
-      // Analyze the file
-      const issues = await analyzeCode({
-        code: content,
-        filePath: file.filename,
-        language,
-        commitMessage: commit.commit.message,
-      });
+        // Skip very large files (> 50KB) to avoid token limits
+        if (content.length > 50000) {
+          console.log(`[Analyze] ⏭️ Skipping (too large: ${content.length} bytes): ${file.filename}`);
+          skippedFiles.push(file.filename);
+          continue;
+        }
 
-      allIssues.push(...issues);
+        const language = detectLanguage(file.filename);
+        console.log(`[Analyze] 🔍 Analyzing: ${file.filename} (${language})`);
+
+        // Analyze the file
+        const issues = await analyzeCode({
+          code: content,
+          filePath: file.filename,
+          language,
+          commitMessage: commit.commit.message,
+        });
+
+        allIssues.push(...issues);
+        analyzedFiles.push(file.filename);
+      } catch (e) {
+        console.warn(`[Analyze] ❌ Failed to analyze ${file.filename}:`, e);
+        skippedFiles.push(file.filename);
+      }
     }
+
+    console.log(`[Analyze] ✅ Analyzed ${analyzedFiles.length} files, skipped ${skippedFiles.length} files`);
+    console.log(`[Analyze] 📊 Found ${allIssues.length} total issues`);
 
     // Calculate issue counts
     const issueCounts: Record<IssueSeverity, number> = {
@@ -197,12 +306,12 @@ export async function POST(request: NextRequest) {
       try {
         // Use provided email or fall back to user's email from Firestore
         let emailTo = recipientEmail;
-        
+
         if (!emailTo) {
           const userDoc = await adminDb.collection("users").doc(userId).get();
           emailTo = userDoc.data()?.email;
         }
-        
+
         if (!emailTo) {
           console.warn("No email address available for notification");
         } else {
@@ -244,9 +353,16 @@ export async function POST(request: NextRequest) {
       report: summary,
     });
   } catch (error) {
-    console.error("Code analysis error:", error);
+    console.error("[Analyze] Error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error("[Analyze] Stack:", errorStack);
+
     return NextResponse.json(
-      { error: "Failed to analyze code" },
+      {
+        error: "Failed to analyze code",
+        details: errorMessage,
+      },
       { status: 500 }
     );
   }

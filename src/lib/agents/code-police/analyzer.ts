@@ -30,19 +30,24 @@ export type AnalysisOutput = z.infer<typeof AnalysisOutputSchema>;
 
 /**
  * Get configured Gemini model
+ * Checks for GEMINI_API_KEY first, then falls back to GOOGLE_API_KEY
  */
 function getGeminiModel(temperature: number = 0) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured");
+    throw new Error(
+      "Gemini API key is not configured. Please set GEMINI_API_KEY or GOOGLE_API_KEY in your environment variables."
+    );
   }
 
+  console.log("[Gemini] Initializing model with API key:", apiKey.substring(0, 8) + "...");
+
   return new ChatGoogleGenerativeAI({
-    model: "gemini-2.0-flash-lite",
+    model: "gemini-2.5-flash",  // Fixed model name
     apiKey,
     temperature,
-    maxRetries: 3,
+    maxRetries: 2,
   });
 }
 
@@ -104,11 +109,11 @@ Keep the tone professional but friendly. Be concise.`;
  */
 function formatCustomRulesSection(customRules?: string[]): string {
   if (!customRules || customRules.length === 0) return '';
-  
+
   const rulesText = customRules
     .map((rule, i) => `  ${i + 1}. ${rule}`)
     .join('\n');
-  
+
   return `
 **🚨 CUSTOM RULES (HIGH PRIORITY):**
 The project owner has defined the following rules that MUST be enforced:
@@ -123,7 +128,7 @@ Violations of these custom rules should be marked as HIGH severity.
  */
 function formatDependentContextSection(dependentContext?: string): string {
   if (!dependentContext) return '';
-  
+
   return `
 **📦 DEPENDENT FILES CONTEXT:**
 The following files import or depend on the file being analyzed. Consider how changes might affect them:
@@ -144,25 +149,35 @@ export async function analyzeCode(input: {
   customRules?: string[];
   dependentContext?: string;
 }): Promise<Omit<CodeIssue, "id" | "analysisRunId" | "projectId" | "isMuted">[]> {
-  const model = getGeminiModel(0);
-  const structuredModel = model.withStructuredOutput(AnalysisOutputSchema);
-
-  const customRulesSection = formatCustomRulesSection(input.customRules);
-  const dependentContextSection = formatDependentContextSection(input.dependentContext);
-
-  const prompt = PromptTemplate.fromTemplate(ANALYSIS_PROMPT);
-  const formattedPrompt = await prompt.format({
-    filePath: input.filePath,
-    language: input.language,
-    commitMessage: input.commitMessage,
-    code: input.code,
-    customRulesSection,
-    dependentContextSection,
-  });
+  console.log(`[Analyzer] Starting analysis for: ${input.filePath}`);
+  console.log(`[Analyzer] Language: ${input.language}, Code length: ${input.code.length} chars`);
 
   try {
+    const model = getGeminiModel(0);
+    console.log("[Analyzer] ✓ Gemini model initialized");
+
+    const structuredModel = model.withStructuredOutput(AnalysisOutputSchema);
+
+    const customRulesSection = formatCustomRulesSection(input.customRules);
+    const dependentContextSection = formatDependentContextSection(input.dependentContext);
+
+    const prompt = PromptTemplate.fromTemplate(ANALYSIS_PROMPT);
+    const formattedPrompt = await prompt.format({
+      filePath: input.filePath,
+      language: input.language,
+      commitMessage: input.commitMessage,
+      code: input.code,
+      customRulesSection,
+      dependentContextSection,
+    });
+
+    console.log(`[Analyzer] Prompt length: ${formattedPrompt.length} chars, calling Gemini...`);
+
     const result = await structuredModel.invoke(formattedPrompt);
-    return result.issues.map((issue) => ({
+
+    console.log(`[Analyzer] ✓ Gemini response received, ${result.issues?.length || 0} issues found`);
+
+    const mappedIssues = (result.issues || []).map((issue) => ({
       filePath: input.filePath,
       line: issue.line,
       endLine: issue.endLine,
@@ -174,8 +189,12 @@ export async function analyzeCode(input: {
       ruleId: issue.ruleId,
       codeSnippet: extractCodeSnippet(input.code, issue.line, issue.endLine),
     }));
+
+    return mappedIssues;
   } catch (error) {
-    console.error("Code analysis failed:", error);
+    console.error("[Analyzer] ❌ Code analysis failed:", error);
+    console.error("[Analyzer] Error details:", error instanceof Error ? error.message : String(error));
+    // Return empty array instead of throwing to allow other files to continue
     return [];
   }
 }
@@ -242,7 +261,7 @@ function extractCodeSnippet(code: string, line: number, endLine?: number): strin
   const lines = code.split("\n");
   const startLine = Math.max(0, line - 3);
   const end = Math.min(lines.length, (endLine || line) + 3);
-  
+
   return lines
     .slice(startLine, end)
     .map((l, i) => `${startLine + i + 1}: ${l}`)
@@ -254,7 +273,7 @@ function extractCodeSnippet(code: string, line: number, endLine?: number): strin
  */
 export function detectLanguage(filePath: string): string {
   const ext = filePath.split(".").pop()?.toLowerCase();
-  
+
   const languageMap: Record<string, string> = {
     ts: "typescript",
     tsx: "typescript",
@@ -274,7 +293,7 @@ export function detectLanguage(filePath: string): string {
     sql: "sql",
     sol: "solidity",
   };
-  
+
   return languageMap[ext || ""] || "text";
 }
 
@@ -284,10 +303,10 @@ export function detectLanguage(filePath: string): string {
 export function chunkCode(code: string, maxLines: number = 200): string[] {
   const lines = code.split("\n");
   const chunks: string[] = [];
-  
+
   for (let i = 0; i < lines.length; i += maxLines) {
     chunks.push(lines.slice(i, i + maxLines).join("\n"));
   }
-  
+
   return chunks;
 }

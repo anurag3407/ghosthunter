@@ -66,17 +66,17 @@ function verifyWebhookSignature(
   secret: string
 ): boolean {
   if (!signature) return false;
-  
+
   const hmac = crypto.createHmac("sha256", secret);
   const digest = `sha256=${hmac.update(payload).digest("hex")}`;
-  
+
   return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
 }
 
 export async function POST(request: NextRequest) {
   try {
     console.log("[GitHub Webhook] Received webhook event");
-    
+
     const rawBody = await request.text();
     const signature = request.headers.get("x-hub-signature-256");
     const event = request.headers.get("x-github-event");
@@ -125,9 +125,9 @@ export async function POST(request: NextRequest) {
     }
 
     const projectDoc = projectsSnapshot.docs[0];
-    const project = { id: projectDoc.id, ...projectDoc.data() } as { 
-      id: string; 
-      userId: string; 
+    const project = { id: projectDoc.id, ...projectDoc.data() } as {
+      id: string;
+      userId: string;
       webhookSecret?: string;
       status?: ProjectStatus;
       customRules?: string[];
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
 
     // Get user's GitHub token from Clerk (OAuth tokens are stored in Clerk, not Firestore)
     let githubToken: string | null = null;
-    
+
     try {
       // Fetch GitHub OAuth token from Clerk
       const clerkResponse = await fetch(
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
       console.log("[GitHub Webhook] Handling push event");
       await handlePushEvent(
         payload as GitHubPushPayload,
-        project as { id: string; userId: string; [key: string]: unknown },
+        project as { id: string; userId: string;[key: string]: unknown },
         githubToken
       );
     } else if (event === "pull_request") {
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
       if (["opened", "synchronize"].includes(prPayload.action)) {
         await handlePREvent(
           prPayload,
-          project as { id: string; userId: string; [key: string]: unknown },
+          project as { id: string; userId: string;[key: string]: unknown },
           githubToken
         );
       }
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
  */
 async function handlePushEvent(
   payload: GitHubPushPayload,
-  project: { id: string; userId: string; [key: string]: unknown },
+  project: { id: string; userId: string;[key: string]: unknown },
   githubToken: string
 ) {
   const { repository, after: commitSha, commits } = payload;
@@ -252,9 +252,9 @@ async function handlePushEvent(
 
   // Create analysis run
   const analysisRef = adminDb.collection("analysis_runs").doc();
-  
+
   console.log("[Push Event] Creating analysis run:", analysisRef.id);
-  
+
   await analysisRef.set({
     id: analysisRef.id,
     userId: project.userId,
@@ -271,47 +271,108 @@ async function handlePushEvent(
     console.log("[Push Event] Fetching commit details...");
     // Fetch commit and analyze
     const commit = await fetchCommit(githubToken, owner, repo, commitSha);
-    console.log("[Push Event] Commit has", commit.files.length, "files changed");
-    
+    const commitFiles = commit.files || [];
+    console.log("[Push Event] Commit has", commitFiles.length, "files changed");
+
+    // ========================================================================
+    // FILE FILTERING - Same as analyze route
+    // ========================================================================
+    const EXCLUDED_PATTERNS = [
+      /^node_modules\//,
+      /^\.git\//,
+      /^dist\//,
+      /^build\//,
+      /^\.next\//,
+      /^out\//,
+      /^coverage\//,
+      /package-lock\.json$/,
+      /yarn\.lock$/,
+      /pnpm-lock\.yaml$/,
+      /\.min\.(js|css)$/,
+      /\.map$/,
+      /\.d\.ts$/,
+    ];
+
+    const ANALYZABLE_EXTENSIONS = [
+      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
+      '.py', '.rb', '.go', '.rs', '.java', '.kt', '.swift',
+      '.c', '.cpp', '.h', '.hpp', '.cs',
+      '.php', '.sql', '.sol', '.vue', '.svelte',
+    ];
+
+    function shouldAnalyzeFile(filename: string): boolean {
+      for (const pattern of EXCLUDED_PATTERNS) {
+        if (pattern.test(filename)) return false;
+      }
+      const ext = '.' + (filename.split('.').pop()?.toLowerCase() || '');
+      return ANALYZABLE_EXTENSIONS.includes(ext);
+    }
+
     const allIssues: Omit<CodeIssue, "id" | "analysisRunId" | "projectId" | "isMuted">[] = [];
+    const analyzedFiles: string[] = [];
+    const skippedFiles: string[] = [];
 
     // Get custom rules from project settings
     const customRules = (project.customRules as string[] | undefined) || [];
 
-    for (const file of commit.files) {
+    for (const file of commitFiles) {
       if (file.status === "removed") {
         console.log("[Push Event] Skipping removed file:", file.filename);
         continue;
       }
 
-      console.log("[Push Event] Analyzing file:", file.filename);
-      const content = await fetchFileContent(githubToken, owner, repo, file.filename, commitSha);
-      const language = detectLanguage(file.filename);
-
-      // Get dependent files for graph-aware analysis (optional, may fail due to rate limits)
-      let dependentContext = '';
-      try {
-        const dependentFiles = await getDependentFiles(githubToken, owner, repo, file.filename);
-        if (dependentFiles.length > 0) {
-          dependentContext = dependentFiles
-            .map(df => `- ${df.path}:\n${df.snippet}`)
-            .join('\n\n');
-        }
-      } catch (err) {
-        console.warn("Graph-aware analysis skipped:", err);
+      // Apply file filtering
+      if (!shouldAnalyzeFile(file.filename)) {
+        console.log("[Push Event] Skipping (filtered):", file.filename);
+        skippedFiles.push(file.filename);
+        continue;
       }
 
-      const issues = await analyzeCode({
-        code: content,
-        filePath: file.filename,
-        language,
-        commitMessage: commit.commit.message,
-        customRules,
-        dependentContext: dependentContext || undefined,
-      });
+      console.log("[Push Event] Analyzing file:", file.filename);
 
-      allIssues.push(...issues);
+      try {
+        const content = await fetchFileContent(githubToken, owner, repo, file.filename, commitSha);
+
+        // Skip large files
+        if (content.length > 50000) {
+          console.log("[Push Event] Skipping (too large):", file.filename);
+          skippedFiles.push(file.filename);
+          continue;
+        }
+
+        const language = detectLanguage(file.filename);
+
+        // Get dependent files for graph-aware analysis (optional, may fail due to rate limits)
+        let dependentContext = '';
+        try {
+          const dependentFiles = await getDependentFiles(githubToken, owner, repo, file.filename);
+          if (dependentFiles.length > 0) {
+            dependentContext = dependentFiles
+              .map(df => `- ${df.path}:\n${df.snippet}`)
+              .join('\n\n');
+          }
+        } catch (err) {
+          console.warn("Graph-aware analysis skipped:", err);
+        }
+
+        const issues = await analyzeCode({
+          code: content,
+          filePath: file.filename,
+          language,
+          commitMessage: commit.commit.message,
+          customRules,
+          dependentContext: dependentContext || undefined,
+        });
+
+        allIssues.push(...issues);
+        analyzedFiles.push(file.filename);
+      } catch (fileError) {
+        console.warn("[Push Event] Failed to analyze file:", file.filename, fileError);
+        skippedFiles.push(file.filename);
+      }
     }
+
+    console.log(`[Push Event] Analyzed ${analyzedFiles.length} files, skipped ${skippedFiles.length}`);
 
     // Calculate counts
     const issueCounts: Record<IssueSeverity, number> = {
@@ -325,7 +386,7 @@ async function handlePushEvent(
     console.log("[Push Event] Issue counts:", issueCounts);
     console.log("[Push Event] Total issues found:", allIssues.length);
 
-    // Store issues in Firestore
+    // Store issues in Firestore SUBCOLLECTION (matching the GET API)
     const fullIssues: CodeIssue[] = allIssues.map((issue, idx) => ({
       ...issue,
       id: `${analysisRef.id}-${idx}`,
@@ -334,18 +395,19 @@ async function handlePushEvent(
       isMuted: false,
     }));
 
-    // Actually store the issues in the issues collection
+    // Store in SUBCOLLECTION: analysis_runs/{runId}/issues
     if (fullIssues.length > 0) {
       const issuesBatch = adminDb.batch();
       for (const issue of fullIssues) {
-        const issueRef = adminDb.collection("issues").doc(issue.id);
+        // FIX: Store in subcollection, not top-level collection
+        const issueRef = analysisRef.collection("issues").doc(issue.id);
         issuesBatch.set(issueRef, {
           ...issue,
           createdAt: new Date(),
         });
       }
       await issuesBatch.commit();
-      console.log("[Push Event] Stored", fullIssues.length, "issues in Firestore");
+      console.log("[Push Event] Stored", fullIssues.length, "issues in subcollection");
     }
 
     // Generate summary
@@ -416,7 +478,7 @@ async function handlePushEvent(
  */
 async function handlePREvent(
   payload: GitHubPRPayload,
-  project: { id: string; userId: string; [key: string]: unknown },
+  project: { id: string; userId: string;[key: string]: unknown },
   githubToken: string
 ) {
   const { repository, pull_request: pr } = payload;
@@ -434,7 +496,7 @@ async function handlePREvent(
 
   // Create analysis run
   const analysisRef = adminDb.collection("analysis_runs").doc();
-  
+
   await analysisRef.set({
     id: analysisRef.id,
     userId: project.userId,
@@ -455,40 +517,60 @@ async function handlePREvent(
   try {
     // Similar analysis as push event but with PR comment output
     const commit = await fetchCommit(githubToken, owner, repo, commitSha);
+    const commitFiles = commit.files || [];
+
+    // File filtering (same as push event)
+    const EXCLUDED_PATTERNS = [/^node_modules\//, /^\.git\//, /^dist\//, /^build\//, /^\.next\//, /package-lock\.json$/, /yarn\.lock$/, /\.min\.(js|css)$/, /\.map$/, /\.d\.ts$/];
+    const ANALYZABLE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.go', '.java', '.vue', '.svelte'];
+    function shouldAnalyzeFile(filename: string): boolean {
+      for (const pattern of EXCLUDED_PATTERNS) {
+        if (pattern.test(filename)) return false;
+      }
+      const ext = '.' + (filename.split('.').pop()?.toLowerCase() || '');
+      return ANALYZABLE_EXTENSIONS.includes(ext);
+    }
+
     const allIssues: Omit<CodeIssue, "id" | "analysisRunId" | "projectId" | "isMuted">[] = [];
 
     // Get custom rules from project settings
     const customRules = (project.customRules as string[] | undefined) || [];
 
-    for (const file of commit.files) {
+    for (const file of commitFiles) {
       if (file.status === "removed") continue;
+      if (!shouldAnalyzeFile(file.filename)) continue;
 
-      const content = await fetchFileContent(githubToken, owner, repo, file.filename, commitSha);
-      const language = detectLanguage(file.filename);
-
-      // Get dependent files for graph-aware analysis
-      let dependentContext = '';
       try {
-        const dependentFiles = await getDependentFiles(githubToken, owner, repo, file.filename);
-        if (dependentFiles.length > 0) {
-          dependentContext = dependentFiles
-            .map(df => `- ${df.path}:\n${df.snippet}`)
-            .join('\n\n');
+        const content = await fetchFileContent(githubToken, owner, repo, file.filename, commitSha);
+        if (content.length > 50000) continue; // Skip large files
+
+        const language = detectLanguage(file.filename);
+
+        // Get dependent files for graph-aware analysis
+        let dependentContext = '';
+        try {
+          const dependentFiles = await getDependentFiles(githubToken, owner, repo, file.filename);
+          if (dependentFiles.length > 0) {
+            dependentContext = dependentFiles
+              .map(df => `- ${df.path}:\n${df.snippet}`)
+              .join('\n\n');
+          }
+        } catch (err) {
+          console.warn("Graph-aware analysis skipped:", err);
         }
-      } catch (err) {
-        console.warn("Graph-aware analysis skipped:", err);
+
+        const issues = await analyzeCode({
+          code: content,
+          filePath: file.filename,
+          language,
+          commitMessage: pr.title,
+          customRules,
+          dependentContext: dependentContext || undefined,
+        });
+
+        allIssues.push(...issues);
+      } catch (fileError) {
+        console.warn("[PR Event] Failed to analyze file:", file.filename);
       }
-
-      const issues = await analyzeCode({
-        code: content,
-        filePath: file.filename,
-        language,
-        commitMessage: pr.title,
-        customRules,
-        dependentContext: dependentContext || undefined,
-      });
-
-      allIssues.push(...issues);
     }
 
     const issueCounts: Record<IssueSeverity, number> = {
@@ -510,18 +592,18 @@ async function handlePREvent(
       isMuted: false,
     }));
 
-    // Store issues in Firestore
+    // Store issues in SUBCOLLECTION (matching GET API)
     if (fullIssues.length > 0) {
       const issuesBatch = adminDb.batch();
       for (const issue of fullIssues) {
-        const issueRef = adminDb.collection("issues").doc(issue.id);
+        const issueRef = analysisRef.collection("issues").doc(issue.id);
         issuesBatch.set(issueRef, {
           ...issue,
           createdAt: new Date(),
         });
       }
       await issuesBatch.commit();
-      console.log("[PR Event] Stored", fullIssues.length, "issues in Firestore");
+      console.log("[PR Event] Stored", fullIssues.length, "issues in subcollection");
     }
 
     const summary = await generateAnalysisSummary({
