@@ -3,6 +3,7 @@ import { Header, Footer, HeroSection, HeroHighlightSection, StickyScrollRevealDe
 import { TextHoverEffect } from "@/components/ui/text-hover-effect";
 import FeaturesSectionDemo from "@/components/ui/features-section-demo-3";
 import AnimatedTestimonialsDemo from "@/components/ui/animated-testimonials-demo";
+import { SplineSceneDemo } from "@/components/ui/spline-scene-demo";
 
 // Force dynamic rendering - Header uses Clerk auth
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,11 @@ export default function LandingPage() {
         text="Enough Building, time for"
         highlightedText="redemption."
       />
+
+      {/* Interactive 3D Spline Scene */}
+      <section className="py-16 px-4 max-w-7xl mx-auto">
+        <SplineSceneDemo />
+      </section>
 
       {/* Sticky Scroll Features Section */}
       <StickyScrollRevealDemo />
