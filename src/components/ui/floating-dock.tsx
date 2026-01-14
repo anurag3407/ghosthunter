@@ -76,7 +76,7 @@ const FloatingDockMobile = ({
                   className={cn(
                     "flex h-12 w-12 items-center justify-center rounded-full backdrop-blur-xl border transition-all",
                     item.active
-                      ? "bg-violet-600/20 border-violet-500/50 text-violet-400"
+                      ? "bg-zinc-700 border-zinc-600 text-white"
                       : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
                   )}
                 >
@@ -177,7 +177,7 @@ function IconContainer({
         className={cn(
           "relative flex aspect-square items-center justify-center rounded-full transition-colors",
           active
-            ? "bg-gradient-to-br from-violet-600 to-indigo-600"
+            ? "bg-zinc-700"
             : "bg-zinc-800 hover:bg-zinc-700"
         )}
       >

@@ -29,7 +29,7 @@ function getGeminiModel() {
   }
 
   return new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.0-flash",
     apiKey,
     temperature: 0.1, // Low temperature for consistent query generation
     maxOutputTokens: 2048,

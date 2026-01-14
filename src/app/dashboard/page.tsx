@@ -9,16 +9,15 @@ import {
   Coins,
   Database,
   ArrowRight,
-  Sparkles,
   Clock,
   Activity,
 } from "lucide-react";
 
 /**
  * ============================================================================
- * DASHBOARD HOME PAGE - SLEEK DESIGN
+ * DASHBOARD HOME PAGE - SUPER DARK MONOCHROME
  * ============================================================================
- * Modern, compact dashboard with real-time data from Firebase.
+ * Ultra-minimal, sleek dashboard with monochrome design.
  */
 
 // Types
@@ -41,56 +40,44 @@ interface ActivityItem {
 // Fetcher for SWR
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// Agent cards configuration - compact version
+// Agent cards configuration - monochrome
 const agents = [
   {
     id: "code-police",
     name: "Code Police",
-    description: "AI-powered code review & security scanning",
+    description: "AI code review",
     icon: Shield,
-    gradient: "from-rose-500/20 to-orange-500/20",
-    iconColor: "text-rose-400",
-    borderHover: "hover:border-rose-500/30",
     href: "/dashboard/code-police",
   },
   {
     id: "pitch-deck",
     name: "Pitch Deck",
-    description: "Generate investor-ready presentations",
+    description: "Generate decks",
     icon: Presentation,
-    gradient: "from-blue-500/20 to-cyan-500/20",
-    iconColor: "text-blue-400",
-    borderHover: "hover:border-blue-500/30",
     href: "/dashboard/pitch-deck",
   },
   {
     id: "equity",
     name: "Equity",
-    description: "Blockchain token management",
+    description: "Token management",
     icon: Coins,
-    gradient: "from-violet-500/20 to-fuchsia-500/20",
-    iconColor: "text-violet-400",
-    borderHover: "hover:border-violet-500/30",
     href: "/dashboard/equity",
   },
   {
     id: "database",
     name: "Database",
-    description: "Chat with your database in plain English",
+    description: "Chat with DB",
     icon: Database,
-    gradient: "from-emerald-500/20 to-teal-500/20",
-    iconColor: "text-emerald-400",
-    borderHover: "hover:border-emerald-500/30",
     href: "/dashboard/database",
   },
 ];
 
-// Activity icon mapping
+// Activity icon mapping - monochrome
 const activityIcons = {
-  "code-review": { icon: Shield, color: "text-rose-400", bg: "bg-rose-500/10" },
-  "pitch-deck": { icon: Presentation, color: "text-blue-400", bg: "bg-blue-500/10" },
-  equity: { icon: Coins, color: "text-violet-400", bg: "bg-violet-500/10" },
-  database: { icon: Database, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+  "code-review": Shield,
+  "pitch-deck": Presentation,
+  equity: Coins,
+  database: Database,
 };
 
 export default function DashboardPage() {
@@ -101,115 +88,95 @@ export default function DashboardPage() {
   const { data, isLoading } = useSWR<{ stats: DashboardStats }>(
     "/api/dashboard/stats",
     fetcher,
-    { refreshInterval: 30000 } // Refresh every 30 seconds
+    { refreshInterval: 30000 }
   );
 
   const stats = data?.stats;
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Compact Welcome Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20">
-            <Sparkles className="w-5 h-5 text-violet-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">
-              Hey {firstName}! 👋
-            </h1>
-            <p className="text-sm text-zinc-500">
-              Your AI startup toolkit is ready
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Sleek Stats Bar */}
-      <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x divide-zinc-800/50">
-          <StatItem
-            icon={Shield}
-            label="Code Reviews"
-            value={stats?.codeReviews.total ?? 0}
-            subtext={`+${stats?.codeReviews.thisWeek ?? 0} this week`}
-            color="text-rose-400"
-            isLoading={isLoading}
-          />
-          <StatItem
-            icon={Presentation}
-            label="Pitch Decks"
-            value={stats?.pitchDecks.total ?? 0}
-            subtext={`${stats?.pitchDecks.completed ?? 0} completed`}
-            color="text-blue-400"
-            isLoading={isLoading}
-          />
-          <StatItem
-            icon={Coins}
-            label="Equity Projects"
-            value={stats?.equityProjects.total ?? 0}
-            subtext={`${stats?.equityProjects.transfers ?? 0} transfers`}
-            color="text-violet-400"
-            isLoading={isLoading}
-          />
-          <StatItem
-            icon={Database}
-            label="DB Connections"
-            value={stats?.databaseQueries.connections ?? 0}
-            subtext={`${stats?.databaseQueries.queries ?? 0} queries`}
-            color="text-emerald-400"
-            isLoading={isLoading}
-          />
-        </div>
-      </div>
-
-      {/* Agent Cards Grid - Compact */}
+    <div className="p-6 lg:p-8 space-y-8 max-w-6xl mx-auto">
+      {/* Minimal Welcome */}
       <div>
-        <h2 className="text-sm font-medium text-zinc-400 mb-3 flex items-center gap-2">
-          <Activity className="w-4 h-4" />
-          Your Agents
+        <h1 className="text-xl font-medium text-white">
+          Welcome back, {firstName}
+        </h1>
+        <p className="text-sm text-zinc-500 mt-1">
+          Your AI workspace overview
+        </p>
+      </div>
+
+      {/* Stats Grid - Minimal */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard
+          icon={Shield}
+          label="Reviews"
+          value={stats?.codeReviews.total ?? 0}
+          sub={`+${stats?.codeReviews.thisWeek ?? 0}`}
+          isLoading={isLoading}
+        />
+        <StatCard
+          icon={Presentation}
+          label="Decks"
+          value={stats?.pitchDecks.total ?? 0}
+          sub={`${stats?.pitchDecks.completed ?? 0} done`}
+          isLoading={isLoading}
+        />
+        <StatCard
+          icon={Coins}
+          label="Projects"
+          value={stats?.equityProjects.total ?? 0}
+          sub={`${stats?.equityProjects.transfers ?? 0} txns`}
+          isLoading={isLoading}
+        />
+        <StatCard
+          icon={Database}
+          label="Connections"
+          value={stats?.databaseQueries.connections ?? 0}
+          sub={`${stats?.databaseQueries.queries ?? 0} queries`}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* Agent Cards - Compact Row */}
+      <div>
+        <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+          Agents
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {agents.map((agent) => (
             <AgentCard key={agent.id} agent={agent} />
           ))}
         </div>
       </div>
 
-      {/* Recent Activity - Streamlined */}
+      {/* Recent Activity - Clean List */}
       <div>
-        <h2 className="text-sm font-medium text-zinc-400 mb-3 flex items-center gap-2">
-          <Clock className="w-4 h-4" />
+        <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
           Recent Activity
         </h2>
-        <div className="bg-zinc-900/30 backdrop-blur-sm border border-zinc-800/50 rounded-xl overflow-hidden">
+        <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-lg overflow-hidden">
           {isLoading ? (
             <div className="p-4 space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center gap-3 animate-pulse">
-                  <div className="w-8 h-8 rounded-lg bg-zinc-800" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 w-32 bg-zinc-800 rounded" />
-                    <div className="h-3 w-48 bg-zinc-800/50 rounded" />
+                  <div className="w-7 h-7 rounded bg-zinc-800" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3.5 w-28 bg-zinc-800 rounded" />
+                    <div className="h-2.5 w-40 bg-zinc-800/60 rounded" />
                   </div>
                 </div>
               ))}
             </div>
           ) : stats?.recentActivity && stats.recentActivity.length > 0 ? (
-            <div className="divide-y divide-zinc-800/50">
+            <div className="divide-y divide-zinc-800/60">
               {stats.recentActivity.map((activity) => (
                 <ActivityRow key={activity.id} activity={activity} />
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center">
-              <div className="w-12 h-12 rounded-full bg-zinc-800/50 mx-auto mb-3 flex items-center justify-center">
-                <Activity className="w-6 h-6 text-zinc-600" />
-              </div>
+            <div className="p-10 text-center">
+              <Activity className="w-5 h-5 text-zinc-600 mx-auto mb-2" />
               <p className="text-zinc-500 text-sm">No activity yet</p>
-              <p className="text-zinc-600 text-xs mt-1">
-                Start using an agent to see your activity here
-              </p>
             </div>
           )}
         </div>
@@ -218,39 +185,36 @@ export default function DashboardPage() {
   );
 }
 
-// Compact Stat Item
-function StatItem({
+// Minimal Stat Card
+function StatCard({
   icon: Icon,
+  label,
   value,
-  subtext,
-  color,
+  sub,
   isLoading,
 }: {
   icon: React.ElementType;
   label: string;
   value: number;
-  subtext: string;
-  color: string;
+  sub: string;
   isLoading: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 lg:px-4 first:lg:pl-0 last:lg:pr-0">
-      <div className={`p-2 rounded-lg bg-zinc-800/50`}>
-        <Icon className={`w-4 h-4 ${color}`} />
+    <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-3.5 h-3.5 text-zinc-500" />
+        <span className="text-xs text-zinc-500">{label}</span>
       </div>
-      <div className="min-w-0">
-        {isLoading ? (
-          <div className="space-y-1 animate-pulse">
-            <div className="h-6 w-8 bg-zinc-800 rounded" />
-            <div className="h-3 w-16 bg-zinc-800/50 rounded" />
-          </div>
-        ) : (
-          <>
-            <p className="text-xl font-bold text-white tabular-nums">{value}</p>
-            <p className="text-xs text-zinc-500 truncate">{subtext}</p>
-          </>
-        )}
-      </div>
+      {isLoading ? (
+        <div className="animate-pulse">
+          <div className="h-6 w-10 bg-zinc-800 rounded" />
+        </div>
+      ) : (
+        <>
+          <p className="text-2xl font-semibold text-white tabular-nums">{value}</p>
+          <p className="text-xs text-zinc-600 mt-0.5">{sub}</p>
+        </>
+      )}
     </div>
   );
 }
@@ -264,26 +228,19 @@ function AgentCard({
   return (
     <Link
       href={agent.href}
-      className={`group relative overflow-hidden bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-4 transition-all duration-300 ${agent.borderHover} hover:bg-zinc-900/80`}
+      className="group bg-zinc-900/40 border border-zinc-800/60 rounded-lg p-3 transition-all hover:bg-zinc-800/40 hover:border-zinc-700/60"
     >
-      {/* Gradient overlay on hover */}
-      <div
-        className={`absolute inset-0 bg-gradient-to-br ${agent.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}
-      />
-
-      <div className="relative flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-zinc-800/50 group-hover:bg-zinc-800 transition-colors">
-            <agent.icon className={`w-5 h-5 ${agent.iconColor}`} />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded bg-zinc-800/80">
+            <agent.icon className="w-4 h-4 text-zinc-400" />
           </div>
           <div>
-            <h3 className="font-semibold text-white text-sm">{agent.name}</h3>
-            <p className="text-xs text-zinc-500 line-clamp-1 mt-0.5">
-              {agent.description}
-            </p>
+            <h3 className="text-sm font-medium text-zinc-200">{agent.name}</h3>
+            <p className="text-xs text-zinc-600">{agent.description}</p>
           </div>
         </div>
-        <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-white group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+        <ArrowRight className="w-3.5 h-3.5 text-zinc-600 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
       </div>
     </Link>
   );
@@ -291,9 +248,8 @@ function AgentCard({
 
 // Activity Row
 function ActivityRow({ activity }: { activity: ActivityItem }) {
-  const { icon: Icon, color, bg } = activityIcons[activity.type];
+  const Icon = activityIcons[activity.type];
 
-  // Format relative time
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -302,25 +258,24 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMins < 1) return "now";
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
     return date.toLocaleDateString();
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 hover:bg-zinc-800/30 transition-colors">
-      <div className={`p-2 rounded-lg ${bg}`}>
-        <Icon className={`w-4 h-4 ${color}`} />
+    <div className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/30 transition-colors">
+      <div className="p-1.5 rounded bg-zinc-800/60">
+        <Icon className="w-3.5 h-3.5 text-zinc-500" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white truncate">{activity.title}</p>
-        <p className="text-xs text-zinc-500 truncate">{activity.description}</p>
+        <p className="text-sm text-zinc-300 truncate">{activity.title}</p>
+        <p className="text-xs text-zinc-600 truncate">{activity.description}</p>
       </div>
-      <span className="text-xs text-zinc-600 flex-shrink-0">
-        {formatTime(activity.timestamp)}
-      </span>
+      <span className="text-xs text-zinc-600">{formatTime(activity.timestamp)}</span>
     </div>
   );
 }
+
