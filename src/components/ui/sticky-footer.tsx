@@ -4,14 +4,12 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { motion, useReducedMotion } from 'motion/react';
 import {
-    FacebookIcon,
-    FrameIcon,
-    InstagramIcon,
-    LinkedinIcon,
-    YoutubeIcon,
-    TwitterIcon,
-    GithubIcon
-} from 'lucide-react';
+    TwitterLogoIcon,
+    GitHubLogoIcon,
+    InstagramLogoIcon,
+    LinkedInLogoIcon,
+    VideoIcon,
+} from '@radix-ui/react-icons';
 import { Button } from './button';
 import { TextHoverEffect } from './text-hover-effect';
 
@@ -111,11 +109,11 @@ export function StickyFooter({ className, ...props }: StickyFooterProps) {
 }
 
 const socialLinks = [
-    { title: 'Twitter', href: '#', icon: TwitterIcon },
-    { title: 'Github', href: '#', icon: GithubIcon },
-    { title: 'Instagram', href: '#', icon: InstagramIcon },
-    { title: 'LinkedIn', href: '#', icon: LinkedinIcon },
-    { title: 'Youtube', href: '#', icon: YoutubeIcon },
+    { title: 'Twitter', href: '#', icon: TwitterLogoIcon },
+    { title: 'Github', href: '#', icon: GitHubLogoIcon },
+    { title: 'Instagram', href: '#', icon: InstagramLogoIcon },
+    { title: 'LinkedIn', href: '#', icon: LinkedInLogoIcon },
+    { title: 'Youtube', href: '#', icon: VideoIcon },
 ];
 
 const footerLinkGroups: FooterLinkGroup[] = [
