@@ -44,7 +44,7 @@ function getGeminiModel(temperature: number = 0) {
   console.log("[Gemini] Initializing model with API key:", apiKey.substring(0, 8) + "...");
 
   return new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash",  // Fixed model name
+    model: "gemini-2.5-flash-lite",  // Using flash lite for faster responses
     apiKey,
     temperature,
     maxRetries: 2,

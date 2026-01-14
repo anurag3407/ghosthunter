@@ -109,20 +109,20 @@ export async function generatePitchDeck(
 ): Promise<{ projectName: string; tagline: string; slides: Slide[] }> {
   const genId = `gen-${Date.now()}-${Math.random().toString(36).substring(7)}`;
   const startTime = Date.now();
-  
+
   console.log(`${LOG_PREFIX} ----------------------------------------`);
   console.log(`${LOG_PREFIX} [${genId}] Starting pitch deck generation`);
   console.log(`${LOG_PREFIX} [${genId}] Input README length: ${readme.length} characters`);
   console.log(`${LOG_PREFIX} [${genId}] Additional instructions: ${additionalInstructions ? `"${additionalInstructions.substring(0, 100)}..."` : "none"}`);
-  
+
   // Initialize model
   console.log(`${LOG_PREFIX} [${genId}] Initializing Gemini model...`);
-  console.log(`${LOG_PREFIX} [${genId}]   - Model: gemini-2.0-flash`);
+  console.log(`${LOG_PREFIX} [${genId}]   - Model: gemini-2.5-flash-lite`);
   console.log(`${LOG_PREFIX} [${genId}]   - Temperature: 0.7`);
   console.log(`${LOG_PREFIX} [${genId}]   - API Key: ${process.env.GOOGLE_AI_API_KEY ? "configured (hidden)" : "NOT SET"}`);
-  
+
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash-lite",
     apiKey: process.env.GOOGLE_AI_API_KEY,
     temperature: 0.7,
   });
@@ -131,14 +131,14 @@ export async function generatePitchDeck(
   // Format prompt
   console.log(`${LOG_PREFIX} [${genId}] Formatting prompt template...`);
   const promptStartTime = Date.now();
-  
+
   const formattedPrompt = await promptTemplate.format({
     readme,
     additionalInstructions: additionalInstructions
       ? `Additional Instructions: ${additionalInstructions}`
       : "",
   });
-  
+
   const promptDuration = Date.now() - promptStartTime;
   console.log(`${LOG_PREFIX} [${genId}] ✓ Prompt formatted in ${promptDuration}ms`);
   console.log(`${LOG_PREFIX} [${genId}] Total prompt length: ${formattedPrompt.length} characters`);
@@ -146,12 +146,12 @@ export async function generatePitchDeck(
   // Invoke AI
   console.log(`${LOG_PREFIX} [${genId}] Invoking Gemini AI...`);
   const invokeStartTime = Date.now();
-  
+
   const response = await model.invoke(formattedPrompt);
-  
+
   const invokeDuration = Date.now() - invokeStartTime;
   console.log(`${LOG_PREFIX} [${genId}] ✓ AI response received in ${invokeDuration}ms`);
-  
+
   const content = response.content as string;
   console.log(`${LOG_PREFIX} [${genId}] Response content length: ${content.length} characters`);
   console.log(`${LOG_PREFIX} [${genId}] Response preview: "${content.substring(0, 200)}..."`);
@@ -168,7 +168,7 @@ export async function generatePitchDeck(
   } catch (parseError) {
     console.warn(`${LOG_PREFIX} [${genId}] ⚠ Structured parsing failed, trying JSON extraction...`);
     console.warn(`${LOG_PREFIX} [${genId}] Parse error:`, parseError instanceof Error ? parseError.message : parseError);
-    
+
     // Try to extract JSON from the response if parsing fails
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -193,7 +193,7 @@ export async function generatePitchDeck(
   console.log(`${LOG_PREFIX} [${genId}]   - projectName: "${parsedOutput.projectName}"`);
   console.log(`${LOG_PREFIX} [${genId}]   - tagline: "${parsedOutput.tagline}"`);
   console.log(`${LOG_PREFIX} [${genId}]   - slides: ${parsedOutput.slides.length} slides`);
-  
+
   // Log each slide
   parsedOutput.slides.forEach((slide, index) => {
     console.log(`${LOG_PREFIX} [${genId}]   Slide ${index + 1}:`);
@@ -250,7 +250,7 @@ export const SLIDE_TYPE_NAMES: Record<SlideType, string> = {
 // Default slide templates for adding new slides
 export function createDefaultSlide(type: SlideType, order: number): Slide {
   console.log(`${LOG_PREFIX} Creating default slide: type=${type}, order=${order}`);
-  
+
   const defaults: Record<SlideType, Omit<Slide, "id" | "order">> = {
     title: {
       type: "title",
