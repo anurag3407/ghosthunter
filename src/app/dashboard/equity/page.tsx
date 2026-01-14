@@ -14,6 +14,7 @@ import {
   Briefcase,
   Clock,
   TrendingUp,
+  Trash2,
 } from "lucide-react";
 import { useWallet, SEPOLIA_CHAIN_ID_NUM } from "@/components/providers/wallet-provider";
 
@@ -73,6 +74,19 @@ export default function EquityPage() {
     await connect();
   };
 
+  const handleDelete = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/equity/projects/${projectId}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setProjects(projects.filter(p => p.id !== projectId));
+      }
+    } catch (error) {
+      console.error("Error deleting project:", error);
+    }
+  };
+
   return (
     <div className="p-8 lg:p-12 space-y-8">
       {/* Header */}
@@ -98,7 +112,7 @@ export default function EquityPage() {
                 {address?.slice(0, 6)}...{address?.slice(-4)}
               </span>
               {!isOnSepolia && (
-                <button 
+                <button
                   onClick={switchToSepolia}
                   className="text-xs text-yellow-400 hover:underline ml-2"
                 >
@@ -140,8 +154,8 @@ export default function EquityPage() {
               href={tab.href}
               className={`
                 px-5 py-2.5 rounded-xl text-sm font-medium transition-all
-                ${isActive 
-                  ? "bg-zinc-800 text-white shadow-sm" 
+                ${isActive
+                  ? "bg-zinc-800 text-white shadow-sm"
                   : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
                 }
               `}
@@ -176,8 +190,8 @@ export default function EquityPage() {
             <span className="text-sm">Latest Activity</span>
           </div>
           <p className="text-lg font-medium text-white">
-            {projects[0]?.createdAt 
-              ? new Date(projects[0].createdAt).toLocaleDateString() 
+            {projects[0]?.createdAt
+              ? new Date(projects[0].createdAt).toLocaleDateString()
               : "No activity"
             }
           </p>
@@ -196,7 +210,7 @@ export default function EquityPage() {
           <h2 className="text-lg font-semibold text-white">Your Projects</h2>
           <div className="grid gap-4">
             {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard key={project.id} project={project} onDelete={handleDelete} />
             ))}
           </div>
         </div>
@@ -225,7 +239,7 @@ function EmptyState({
       <p className="text-zinc-400 mb-8 max-w-md mx-auto text-lg">
         Create a project to mint equity tokens for your GitHub repository and distribute them to your team.
       </p>
-      
+
       {!walletConnected ? (
         <button
           onClick={onConnectWallet}
@@ -277,14 +291,34 @@ function EmptyState({
   );
 }
 
-function ProjectCard({ project }: { project: EquityProject }) {
+function ProjectCard({
+  project,
+  onDelete
+}: {
+  project: EquityProject;
+  onDelete: (id: string) => void;
+}) {
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on the Etherscan link
     const target = e.target as HTMLElement;
-    if (target.closest('a[href^="https://"]')) {
+    // Don't navigate if clicking on buttons or external links
+    if (target.closest('button') || target.closest('a[href^="https://"]')) {
       return;
     }
     window.location.href = `/dashboard/equity/${project.id}`;
+  };
+
+  const handleDeleteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isConfirming) {
+      setIsDeleting(true);
+      await onDelete(project.id);
+      setIsDeleting(false);
+    } else {
+      setIsConfirming(true);
+    }
   };
 
   return (
@@ -319,13 +353,42 @@ function ProjectCard({ project }: { project: EquityProject }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-8">
+      <div className="flex items-center gap-4">
         <div className="text-right">
           <p className="text-sm text-zinc-400">Total Supply</p>
           <p className="text-xl font-bold text-white">
             {parseInt(project.totalSupply || "0").toLocaleString()}
           </p>
         </div>
+
+        {/* Delete Button */}
+        {isConfirming ? (
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={handleDeleteClick}
+              disabled={isDeleting}
+              className="px-3 py-2 text-sm text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm"}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsConfirming(false); }}
+              disabled={isDeleting}
+              className="px-3 py-2 text-sm text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleDeleteClick}
+            className="p-3 text-zinc-500 hover:text-red-400 hover:bg-zinc-800 rounded-xl transition-all"
+            title="Delete project"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        )}
+
         <a
           href={`https://sepolia.etherscan.io/address/${project.contractAddress}`}
           target="_blank"

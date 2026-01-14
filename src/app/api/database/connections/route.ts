@@ -18,7 +18,7 @@ import { detectDatabaseType } from "@/lib/agents/database/universal-schema";
 export async function GET() {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -68,7 +68,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -94,11 +94,11 @@ export async function POST(request: NextRequest) {
       // Connection string mode - auto-detect type
       const detectedType = detectDatabaseType(connectionString);
       const encryptedUri = encrypt(connectionString);
-      
+
       // Extract host and database from connection string for display
       let displayHost = "Unknown";
       let displayDatabase = "Unknown";
-      
+
       try {
         const url = new URL(connectionString);
         displayHost = url.hostname;
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -236,17 +236,26 @@ export async function DELETE(request: NextRequest) {
     // Delete the connection
     await adminDb.collection("database_connections").doc(connectionId).delete();
 
-    // Also delete associated conversations
+    // Also delete associated conversations and their messages
     const conversationsSnapshot = await adminDb
-      .collection("database_conversations")
+      .collection("db_conversations")
       .where("connectionId", "==", connectionId)
       .get();
 
+    // Use batched writes for efficient deletion
     const batch = adminDb.batch();
-    conversationsSnapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
+
+    // First, delete all messages in each conversation
+    for (const convDoc of conversationsSnapshot.docs) {
+      const messagesSnapshot = await convDoc.ref.collection("messages").get();
+      messagesSnapshot.docs.forEach((msgDoc) => {
+        batch.delete(msgDoc.ref);
+      });
+      batch.delete(convDoc.ref);
+    }
+
     await batch.commit();
+    console.log(`[Database Connections] Deleted connection ${connectionId} with ${conversationsSnapshot.size} conversations`);
 
     return NextResponse.json({ success: true });
   } catch (error) {

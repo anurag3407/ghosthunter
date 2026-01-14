@@ -183,7 +183,7 @@ async function handleUserUpdated(data: ClerkWebhookEvent["data"]) {
     updates.name = [first_name, last_name].filter(Boolean).join(" ") || "User";
   }
   if (image_url !== undefined) updates.avatarUrl = image_url;
-  
+
   updates.githubConnected = !!githubAccount;
   if (githubAccount?.username) {
     updates.githubUsername = githubAccount.username;
@@ -195,6 +195,7 @@ async function handleUserUpdated(data: ClerkWebhookEvent["data"]) {
 
 /**
  * Handle user.deleted event
+ * Cascade delete all user data to prevent orphaned records
  */
 async function handleUserDeleted(data: ClerkWebhookEvent["data"]) {
   const { id } = data;
@@ -205,15 +206,99 @@ async function handleUserDeleted(data: ClerkWebhookEvent["data"]) {
     return;
   }
 
-  // Delete user document
-  await adminDb.collection("users").doc(id).delete();
+  console.log(`[Clerk Webhook] Starting cascade delete for user: ${id}`);
+  const batch = adminDb.batch();
+  let deleteCount = 0;
 
-  // Optionally: Clean up user's data (projects, decks, connections, etc.)
-  // For now, we'll leave the data for data retention purposes
-  // In production, you might want to:
-  // 1. Anonymize the data
-  // 2. Mark for deletion after a grace period
-  // 3. Delete immediately based on compliance requirements
+  try {
+    // 1. Delete user's pitch-decks
+    const pitchDecksSnapshot = await adminDb
+      .collection("pitch-decks")
+      .where("userId", "==", id)
+      .get();
+    pitchDecksSnapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+      deleteCount++;
+    });
+    console.log(`[Clerk Webhook] Queued ${pitchDecksSnapshot.size} pitch-decks for deletion`);
 
-  console.log(`Deleted user: ${id}`);
+    // 2. Delete user's code-police projects and their analysis_runs
+    const projectsSnapshot = await adminDb
+      .collection("projects")
+      .where("userId", "==", id)
+      .get();
+    for (const projectDoc of projectsSnapshot.docs) {
+      // Delete associated analysis_runs
+      const analysisRunsSnapshot = await adminDb
+        .collection("analysis_runs")
+        .where("projectId", "==", projectDoc.id)
+        .get();
+      analysisRunsSnapshot.docs.forEach(runDoc => {
+        batch.delete(runDoc.ref);
+        deleteCount++;
+      });
+      batch.delete(projectDoc.ref);
+      deleteCount++;
+    }
+    console.log(`[Clerk Webhook] Queued ${projectsSnapshot.size} projects for deletion`);
+
+    // 3. Delete user's database_connections and their conversations with messages
+    const connectionsSnapshot = await adminDb
+      .collection("database_connections")
+      .where("userId", "==", id)
+      .get();
+    for (const connDoc of connectionsSnapshot.docs) {
+      // Delete associated conversations and their messages
+      const conversationsSnapshot = await adminDb
+        .collection("db_conversations")
+        .where("connectionId", "==", connDoc.id)
+        .get();
+      for (const convDoc of conversationsSnapshot.docs) {
+        // Delete messages subcollection
+        const messagesSnapshot = await convDoc.ref.collection("messages").get();
+        messagesSnapshot.docs.forEach(msgDoc => {
+          batch.delete(msgDoc.ref);
+          deleteCount++;
+        });
+        batch.delete(convDoc.ref);
+        deleteCount++;
+      }
+      batch.delete(connDoc.ref);
+      deleteCount++;
+    }
+    console.log(`[Clerk Webhook] Queued ${connectionsSnapshot.size} database connections for deletion`);
+
+    // 4. Delete user's equity_projects
+    const equityProjectsSnapshot = await adminDb
+      .collection("equity_projects")
+      .where("userId", "==", id)
+      .get();
+    equityProjectsSnapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+      deleteCount++;
+    });
+    console.log(`[Clerk Webhook] Queued ${equityProjectsSnapshot.size} equity projects for deletion`);
+
+    // 5. Delete user's equity_transactions
+    const equityTransactionsSnapshot = await adminDb
+      .collection("equity_transactions")
+      .where("userId", "==", id)
+      .get();
+    equityTransactionsSnapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+      deleteCount++;
+    });
+    console.log(`[Clerk Webhook] Queued ${equityTransactionsSnapshot.size} equity transactions for deletion`);
+
+    // 6. Delete user document
+    batch.delete(adminDb.collection("users").doc(id));
+    deleteCount++;
+
+    // Commit all deletions
+    await batch.commit();
+    console.log(`[Clerk Webhook] ✓ Cascade delete completed for user ${id}: ${deleteCount} documents deleted`);
+  } catch (error) {
+    console.error(`[Clerk Webhook] ❌ Error during cascade delete for user ${id}:`, error);
+    throw error;
+  }
 }
