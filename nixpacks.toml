@@ -2,10 +2,16 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmds = ["npm ci --legacy-peer-deps"]
+cmds = ["npm install --legacy-peer-deps"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = [
+  "rm -rf .next/cache",
+  "npm run build"
+]
+
+[variables]
+SKIP_ENV_VALIDATION = "true"
 
 [start]
 cmd = "npm start"
