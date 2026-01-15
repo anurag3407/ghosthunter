@@ -8,10 +8,8 @@ import {
   ArrowLeft,
   Github,
   Loader2,
-  CheckCircle2,
   AlertCircle,
   Search,
-  GitBranch,
   Star,
   Lock,
   Unlock,
@@ -41,7 +39,7 @@ export default function ConnectRepositoryPage() {
   const [filteredRepos, setFilteredRepos] = useState<GitHubRepo[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
+  const [selectedRepo] = useState<GitHubRepo | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState("");
   const [githubConnected, setGithubConnected] = useState(false);
@@ -53,15 +51,15 @@ export default function ConnectRepositoryPage() {
       try {
         const response = await fetch("/api/github/repos");
         const data = await response.json();
-        
-        console.log("[ConnectRepo] API Response:", { 
-          status: response.status, 
-          connected: data.connected, 
+
+        console.log("[ConnectRepo] API Response:", {
+          status: response.status,
+          connected: data.connected,
           repoCount: data.repos?.length || 0,
           hasError: !!data.error,
-          message: data.message 
+          message: data.message
         });
-        
+
         if (!response.ok) {
           throw new Error(data.error || data.message || "Failed to fetch repositories");
         }
@@ -69,7 +67,7 @@ export default function ConnectRepositoryPage() {
         setRepos(data.repos || []);
         setFilteredRepos(data.repos || []);
         setGithubConnected(data.connected);
-        
+
         if (!data.connected) {
           setError(data.message || "GitHub not connected. Please connect your GitHub account in Settings.");
         } else if (data.repos && data.repos.length === 0) {
@@ -195,7 +193,7 @@ export default function ConnectRepositoryPage() {
           <Github className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">No Repositories Found</h2>
           <p className="text-zinc-400 mb-6">
-            {githubConnected 
+            {githubConnected
               ? "You don't have any repositories, or we couldn't access them."
               : "Connect your GitHub account to see your repositories."}
           </p>
@@ -219,11 +217,10 @@ export default function ConnectRepositoryPage() {
             {filteredRepos.map((repo) => (
               <div
                 key={repo.id}
-                className={`p-4 rounded-xl border transition-all ${
-                  selectedRepo?.id === repo.id
+                className={`p-4 rounded-xl border transition-all ${selectedRepo?.id === repo.id
                     ? "bg-red-500/10 border-red-500/30"
                     : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">

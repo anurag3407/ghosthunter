@@ -117,44 +117,49 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </div>
       </div>
 
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-6 bg-neutral-950/90 backdrop-blur-sm border-b border-zinc-800/40">
-        <a href="/dashboard" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center">
-            <IconSparkles className="w-4 h-4 text-zinc-400" />
+      {/* Header with Gradient Accent */}
+      <header className="fixed top-0 left-0 right-0 z-50">
+        {/* Gradient accent line */}
+        <div className="h-0.5 bg-gradient-to-r from-transparent via-violet-500/50 to-transparent" />
+
+        <div className="h-14 flex items-center justify-between px-6 bg-neutral-950/90 backdrop-blur-xl border-b border-white/5">
+          <a href="/dashboard" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/10 flex items-center justify-center border border-white/10 group-hover:shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-shadow duration-300">
+              <IconSparkles className="w-4 h-4 text-violet-400" />
+            </div>
+            <span className="text-base font-semibold bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">
+              GhostFounder
+            </span>
+          </a>
+
+          <div className="flex items-center gap-3">
+            {/* Notifications Link */}
+            <Link
+              href="/dashboard/notifications"
+              className="relative p-2 rounded-lg text-zinc-500 hover:text-violet-400 hover:bg-white/5 transition-all duration-200"
+              aria-label="Notifications"
+            >
+              <Bell className="w-4.5 h-4.5" />
+            </Link>
+
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "w-8 h-8 ring-2 ring-white/10",
+                  userButtonPopoverCard: "bg-zinc-900 border-zinc-800 backdrop-blur-xl",
+                  userButtonPopoverActionButton: "hover:bg-white/5",
+                  userButtonPopoverActionButtonText: "text-zinc-300",
+                  userButtonPopoverFooter: "hidden",
+                },
+              }}
+            />
           </div>
-          <span className="text-base font-semibold text-zinc-200">
-            GhostFounder
-          </span>
-        </a>
-
-        <div className="flex items-center gap-3">
-          {/* Notifications Link */}
-          <Link
-            href="/dashboard/notifications"
-            className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
-            aria-label="Notifications"
-          >
-            <Bell className="w-4.5 h-4.5" />
-          </Link>
-
-          <UserButton
-            afterSignOutUrl="/"
-            appearance={{
-              elements: {
-                avatarBox: "w-8 h-8",
-                userButtonPopoverCard: "bg-zinc-900 border-zinc-800",
-                userButtonPopoverActionButton: "hover:bg-zinc-800",
-                userButtonPopoverActionButtonText: "text-zinc-300",
-                userButtonPopoverFooter: "hidden",
-              },
-            }}
-          />
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="relative pt-14 pb-20 min-h-screen z-10">
+      <main className="relative pt-16 pb-24 min-h-screen z-10">
         {children}
       </main>
 
