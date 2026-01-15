@@ -40,14 +40,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Disable telemetry and Turbopack for production stability
+  // Disable telemetry
   experimental: {
-    // Use Webpack instead of Turbopack for production builds
-    // Turbopack has issues with global-error.tsx prerendering
-  },
-  // Disable Turbopack for production builds (use Webpack)
-  turbopack: {
-    // Turbopack configuration - disabled features that cause issues
+    // Improve build performance
   },
 };
 
