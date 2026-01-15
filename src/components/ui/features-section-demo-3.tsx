@@ -254,31 +254,44 @@ export const SkeletonHowToUse = () => {
 
 // Combined Security & Integrations Skeleton (Stacked Vertically)
 import DatabaseWithRestApi from "@/components/ui/database-with-rest-api";
+import HyperTextParagraph from "@/components/ui/hyper-text-with-decryption";
 
 export const SkeletonSecurityIntegrations = () => {
   return (
     <div className="relative flex flex-col items-center justify-start p-4 gap-4 h-full overflow-hidden">
-      {/* TOP: Blockchain Security */}
-      <div className="flex flex-col items-center gap-3">
+      {/* TOP: Blockchain Security with HyperText */}
+      <div className="flex flex-col items-center gap-4 py-4">
+        {/* Security Icon */}
         <div className="relative">
-          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <svg className="w-8 h-8 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
-          </div>
           <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 w-20 h-20 -left-2 -top-2"
+            className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-500/20"
+            animate={{
+              boxShadow: [
+                "0 0 20px rgba(168, 85, 247, 0.2)",
+                "0 0 40px rgba(168, 85, 247, 0.4)",
+                "0 0 20px rgba(168, 85, 247, 0.2)"
+              ]
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
           >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 w-2.5 h-2.5 bg-emerald-500/80 rounded shadow-md" />
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1 w-2.5 h-2.5 bg-cyan-500/80 rounded shadow-md" />
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2.5 h-2.5 bg-purple-500/80 rounded shadow-md" />
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 w-2.5 h-2.5 bg-pink-500/80 rounded shadow-md" />
+            <svg className="w-7 h-7 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
           </motion.div>
         </div>
+
+        {/* HyperText Decryption Effect */}
+        <HyperTextParagraph
+          text="Blockchain Secured Immutable Records Encrypted Equity Tokens"
+          highlightWords={["Blockchain", "Secured", "Immutable", "Encrypted", "Tokens"]}
+          highlightColor="#a855f7"
+          defaultColor="#71717a"
+          hoverBgColor="#27272a"
+          className="text-xs text-center max-w-[180px] leading-relaxed"
+        />
+
+        {/* Security Badges */}
         <div className="flex flex-wrap justify-center gap-1.5">
           <span className="px-2 py-1 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full">Immutable</span>
           <span className="px-2 py-1 text-[10px] text-purple-400 bg-purple-500/10 border border-purple-500/20 rounded-full">Encrypted</span>
