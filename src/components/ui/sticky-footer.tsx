@@ -10,7 +10,7 @@ import {
     LinkedInLogoIcon,
     VideoIcon,
 } from '@radix-ui/react-icons';
-import { Button } from './button';
+import { Button } from './Button';
 import { TextHoverEffect } from './text-hover-effect';
 
 

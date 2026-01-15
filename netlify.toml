@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build:netlify"
+  publish = ".next"
+
+[build.environment]
+  SKIP_ENV_VALIDATION = "true"
+  NODE_VERSION = "20"
+
+# Essential for Next.js App Router on Netlify
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

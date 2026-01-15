@@ -1,5 +1,5 @@
 import { ArrowRightIcon, PlusIcon } from "@radix-ui/react-icons";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 
 export function CallToAction() {
     return (
