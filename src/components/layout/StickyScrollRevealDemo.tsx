@@ -388,38 +388,15 @@ export default function StickyScrollRevealDemo() {
   return (
     <section className="w-full py-20 px-4 bg-black">
       <div className="max-w-7xl mx-auto">
-        {/* Section Header */}
+        {/* Section Header - Minimal */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 mb-6">
-            <Sparkles className="w-4 h-4 text-violet-400" />
-            <span className="text-sm text-violet-300 font-medium">AI-Powered Features</span>
-          </div>
           <h2 className="text-3xl sm:text-5xl font-bold text-white mb-6">
-            Your Complete{" "}
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400">
-              Startup Toolkit
-            </span>
+            Your Complete Startup Toolkit
           </h2>
           <p className="text-lg text-zinc-400 max-w-3xl mx-auto leading-relaxed">
             Four autonomous AI agents working 24/7 to build, protect, and scale your startup.
             From code security to investor pitches — we&apos;ve got you covered.
           </p>
-
-          {/* Feature Pills */}
-          <div className="flex flex-wrap justify-center gap-3 mt-8">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/80 border border-zinc-800">
-              <Zap className="w-4 h-4 text-yellow-400" />
-              <span className="text-sm text-zinc-300">Instant Setup</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/80 border border-zinc-800">
-              <Lock className="w-4 h-4 text-green-400" />
-              <span className="text-sm text-zinc-300">Enterprise Security</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/80 border border-zinc-800">
-              <MessageSquare className="w-4 h-4 text-blue-400" />
-              <span className="text-sm text-zinc-300">24/7 AI Support</span>
-            </div>
-          </div>
         </div>
 
         <StickyScroll content={content} contentClassName="h-[22rem] w-[20rem]" />
