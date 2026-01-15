@@ -1,7 +1,7 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef } from "react";
 import { useMotionValueEvent, useScroll } from "motion/react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 
 export const StickyScroll = ({
@@ -38,76 +38,105 @@ export const StickyScroll = ({
     setActiveCard(closestBreakpointIndex);
   });
 
-  const backgroundColors = [
-    "#0a0a0a", // black
-    "#0f172a", // slate-900
-    "#09090b", // zinc-950
-    "#0c0a09", // stone-950
+  // Border glow colors for each card
+  const borderColors = [
+    "shadow-red-500/20 border-red-500/30",     // Code Police
+    "shadow-blue-500/20 border-blue-500/30",   // Pitch Deck  
+    "shadow-purple-500/20 border-purple-500/30", // Equity
+    "shadow-green-500/20 border-green-500/30", // Database
   ];
-
-  const linearGradients = [
-    "linear-gradient(to bottom right, #ef4444, #f97316)", // red to orange (Code Police)
-    "linear-gradient(to bottom right, #3b82f6, #06b6d4)", // blue to cyan (Pitch Deck)
-    "linear-gradient(to bottom right, #a855f7, #ec4899)", // purple to pink (Equity)
-    "linear-gradient(to bottom right, #22c55e, #10b981)", // green to emerald (Database)
-  ];
-
-  const [backgroundGradient, setBackgroundGradient] = useState(
-    linearGradients[0],
-  );
-
-  useEffect(() => {
-    setBackgroundGradient(linearGradients[activeCard % linearGradients.length]);
-  }, [activeCard]);
 
   return (
-    <motion.div
-      animate={{
-        backgroundColor: backgroundColors[activeCard % backgroundColors.length],
-      }}
-      className="relative flex h-[30rem] justify-center space-x-10 overflow-y-auto rounded-2xl p-10"
+    <div
+      className="relative flex h-[32rem] justify-center gap-16 overflow-y-auto rounded-3xl p-10 bg-transparent"
       ref={ref}
     >
-      <div className="div relative flex items-start px-4">
-        <div className="max-w-2xl">
+      {/* Left - Text Content */}
+      <div className="relative flex items-start">
+        <div className="max-w-xl">
           {content.map((item, index) => (
-            <div key={item.title + index} className="my-20">
+            <div key={item.title + index} className="my-20 first:mt-0">
               <motion.h2
-                initial={{
-                  opacity: 0,
-                }}
+                initial={{ opacity: 0, x: -20 }}
                 animate={{
-                  opacity: activeCard === index ? 1 : 0.3,
+                  opacity: activeCard === index ? 1 : 0.2,
+                  x: activeCard === index ? 0 : -10,
                 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
                 className="text-2xl font-bold text-white"
               >
                 {item.title}
               </motion.h2>
               <motion.p
-                initial={{
-                  opacity: 0,
-                }}
+                initial={{ opacity: 0 }}
                 animate={{
-                  opacity: activeCard === index ? 1 : 0.3,
+                  opacity: activeCard === index ? 1 : 0.15,
                 }}
-                className="text-lg mt-10 max-w-sm text-zinc-300"
+                transition={{ duration: 0.3, ease: "easeOut", delay: 0.1 }}
+                className="text-base mt-6 max-w-md text-zinc-400 leading-relaxed"
               >
                 {item.description}
               </motion.p>
+
+              {/* Progress indicator */}
+              <motion.div
+                initial={{ scaleX: 0 }}
+                animate={{
+                  scaleX: activeCard === index ? 1 : 0,
+                }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="h-0.5 w-12 mt-6 bg-gradient-to-r from-violet-500 to-cyan-500 origin-left rounded-full"
+              />
             </div>
           ))}
-          <div className="h-40" />
+          <div className="h-48" />
         </div>
       </div>
+
+      {/* Right - Sticky Preview */}
       <div
-        style={{ background: backgroundGradient }}
         className={cn(
-          "sticky top-10 hidden h-60 w-80 overflow-hidden rounded-2xl lg:block",
+          "sticky top-10 hidden lg:block overflow-hidden rounded-2xl",
+          "border bg-zinc-950/80 backdrop-blur-sm",
+          "transition-all duration-500 ease-out",
+          "shadow-2xl",
+          borderColors[activeCard % borderColors.length],
           contentClassName,
         )}
       >
-        {content[activeCard].content ?? null}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeCard}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="w-full h-full"
+          >
+            {content[activeCard].content ?? null}
+          </motion.div>
+        </AnimatePresence>
       </div>
-    </motion.div>
+
+      {/* Side indicator dots */}
+      <div className="hidden lg:flex flex-col items-center justify-center gap-3 absolute right-6 top-1/2 -translate-y-1/2">
+        {content.map((_, index) => (
+          <motion.div
+            key={index}
+            animate={{
+              scale: activeCard === index ? 1.2 : 1,
+              opacity: activeCard === index ? 1 : 0.3,
+            }}
+            transition={{ duration: 0.2 }}
+            className={cn(
+              "w-2 h-2 rounded-full transition-colors duration-300",
+              activeCard === index
+                ? ["bg-red-400", "bg-blue-400", "bg-purple-400", "bg-green-400"][index]
+                : "bg-zinc-600"
+            )}
+          />
+        ))}
+      </div>
+    </div>
   );
 };

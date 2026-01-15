@@ -161,13 +161,19 @@ export default function HeroSection() {
             <ArrowRight className="w-4 h-4" />
           </HoverBorderGradient>
 
-          {/* How to Start - Ghost Button */}
+          {/* How to Start - Sleek Neon Button */}
           <Link
             href="#how-to-start"
-            className="group inline-flex items-center gap-2 px-6 py-3.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm text-white font-medium hover:bg-white/10 hover:border-white/30 transition-all duration-300"
+            className="group relative inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full text-white font-medium transition-all duration-300 overflow-hidden hover:scale-105"
           >
-            <Play className="w-4 h-4" />
-            <span>How to Start</span>
+            {/* Gradient border effect */}
+            <span className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500/50 via-cyan-500/50 to-violet-500/50 p-[1px]">
+              <span className="absolute inset-[1px] rounded-full bg-black" />
+            </span>
+            {/* Glow effect on hover */}
+            <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-violet-500/20 via-cyan-500/20 to-violet-500/20 blur-sm" />
+            <Play className="relative z-10 w-4 h-4 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+            <span className="relative z-10">How to Start</span>
           </Link>
         </motion.div>
       </div>

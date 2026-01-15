@@ -35,16 +35,16 @@ export function HoverBorderGradient({
   };
 
   const movingMap: Record<Direction, string> = {
-    TOP: "radial-gradient(20.7% 50% at 50% 0%, hsl(0, 0%, 100%) 0%, rgba(255, 255, 255, 0) 100%)",
-    LEFT: "radial-gradient(16.6% 43.1% at 0% 50%, hsl(0, 0%, 100%) 0%, rgba(255, 255, 255, 0) 100%)",
+    TOP: "radial-gradient(20.7% 50% at 50% 0%, hsl(270, 95%, 60%) 0%, rgba(139, 92, 246, 0) 100%)",
+    LEFT: "radial-gradient(16.6% 43.1% at 0% 50%, hsl(270, 95%, 60%) 0%, rgba(139, 92, 246, 0) 100%)",
     BOTTOM:
-      "radial-gradient(20.7% 50% at 50% 100%, hsl(0, 0%, 100%) 0%, rgba(255, 255, 255, 0) 100%)",
+      "radial-gradient(20.7% 50% at 50% 100%, hsl(270, 95%, 60%) 0%, rgba(139, 92, 246, 0) 100%)",
     RIGHT:
-      "radial-gradient(16.2% 41.2% at 100% 50%, hsl(0, 0%, 100%) 0%, rgba(255, 255, 255, 0) 100%)",
+      "radial-gradient(16.2% 41.2% at 100% 50%, hsl(270, 95%, 60%) 0%, rgba(139, 92, 246, 0) 100%)",
   };
 
   const highlight =
-    "radial-gradient(75% 181.2% at 50% 50%, #3275F8 0%, rgba(255, 255, 255, 0) 100%)";
+    "radial-gradient(75% 181.2% at 50% 50%, #06b6d4 0%, #8b5cf6 50%, rgba(139, 92, 246, 0) 100%)";
 
   useEffect(() => {
     if (!hovered) {
