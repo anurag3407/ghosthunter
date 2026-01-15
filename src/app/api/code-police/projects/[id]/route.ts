@@ -31,19 +31,19 @@ export async function GET(
         hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
         hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
       });
-      return NextResponse.json({
-        error: "Database not configured. Please check server logs for Firebase Admin initialization errors."
+      return NextResponse.json({ 
+        error: "Database not configured. Please check server logs for Firebase Admin initialization errors." 
       }, { status: 503 });
     }
 
     const projectDoc = await adminDb.collection("projects").doc(id).get();
-
+    
     if (!projectDoc.exists) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    const project = { id: projectDoc.id, ...projectDoc.data() } as { id: string; userId?: string;[key: string]: unknown };
-
+    const project = { id: projectDoc.id, ...projectDoc.data() } as { id: string; userId?: string; [key: string]: unknown };
+    
     // Verify ownership
     if (project.userId !== userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -68,7 +68,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { status, customRules, ownerEmail, notificationPrefs, autoFixEnabled } = body;
+    const { status, customRules, ownerEmail, notificationPrefs } = body;
 
     const adminDb = getAdminDb();
     if (!adminDb) {
@@ -77,13 +77,13 @@ export async function PATCH(
 
     // Fetch existing project
     const projectDoc = await adminDb.collection("projects").doc(id).get();
-
+    
     if (!projectDoc.exists) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
     const existingProject = projectDoc.data();
-
+    
     // Verify ownership
     if (existingProject?.userId !== userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -101,7 +101,7 @@ export async function PATCH(
         return NextResponse.json({ error: "Invalid status" }, { status: 400 });
       }
       updateData.status = status;
-
+      
       // If status is changing to 'stopped', also set isActive to false for backwards compat
       if (status === 'stopped') {
         updateData.isActive = false;
@@ -131,19 +131,14 @@ export async function PATCH(
       };
     }
 
-    // Set auto-fix enabled
-    if (autoFixEnabled !== undefined) {
-      updateData.autoFixEnabled = Boolean(autoFixEnabled);
-    }
-
     await adminDb.collection("projects").doc(id).update(updateData);
 
     // Fetch updated project
     const updatedDoc = await adminDb.collection("projects").doc(id).get();
     const updatedProject = { id: updatedDoc.id, ...updatedDoc.data() };
 
-    return NextResponse.json({
-      success: true,
+    return NextResponse.json({ 
+      success: true, 
       project: updatedProject,
       message: `Project updated successfully`,
     });
@@ -171,13 +166,13 @@ export async function DELETE(
 
     // Fetch existing project
     const projectDoc = await adminDb.collection("projects").doc(id).get();
-
+    
     if (!projectDoc.exists) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
     const project = projectDoc.data();
-
+    
     // Verify ownership
     if (project?.userId !== userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -189,7 +184,7 @@ export async function DELETE(
         // Get user's GitHub token
         const userDoc = await adminDb.collection("users").doc(userId).get();
         const githubToken = userDoc.data()?.githubAccessToken;
-
+        
         if (githubToken) {
           await deleteWebhook(
             githubToken,
@@ -213,16 +208,16 @@ export async function DELETE(
       .collection("analysis_runs")
       .where("projectId", "==", id)
       .get();
-
+    
     const batch = adminDb.batch();
     runsSnapshot.docs.forEach(doc => {
       batch.delete(doc.ref);
     });
     await batch.commit();
 
-    return NextResponse.json({
-      success: true,
-      message: "Project deleted successfully"
+    return NextResponse.json({ 
+      success: true, 
+      message: "Project deleted successfully" 
     });
   } catch (error) {
     console.error("Error deleting project:", error);

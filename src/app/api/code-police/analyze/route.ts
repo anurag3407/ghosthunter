@@ -20,17 +20,6 @@ import type { DocumentData, QueryDocumentSnapshot, Firestore } from "firebase-ad
  * Analyzes code from a GitHub repository and optionally sends email report.
  */
 
-// Helper to remove undefined values for Firestore
-const sanitizeForFirestore = <T extends Record<string, unknown>>(obj: T): T => {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    if (value !== undefined) {
-      result[key] = value;
-    }
-  }
-  return result as T;
-};
-
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
@@ -125,38 +114,8 @@ export async function POST(request: NextRequest) {
       createdAt: now,
     });
 
-    // Fetch commit details - if no SHA provided, get latest commit
-    let commit;
-    let actualCommitSha = commitSha;
-
-    if (!commitSha || commitSha === "latest") {
-      console.log("[Analyze] No commit SHA provided, fetching latest commit from main branch...");
-      // Fetch the list of commits to get the latest SHA
-      const commitsResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/commits?per_page=1`,
-        {
-          headers: {
-            Authorization: `Bearer ${githubToken}`,
-            Accept: "application/vnd.github.v3+json",
-          },
-        }
-      );
-
-      if (!commitsResponse.ok) {
-        const errorData = await commitsResponse.json().catch(() => ({}));
-        throw new Error(`Failed to fetch commits: ${commitsResponse.status} ${errorData.message || commitsResponse.statusText}`);
-      }
-
-      const commits = await commitsResponse.json();
-      if (!commits || commits.length === 0) {
-        throw new Error("No commits found in repository");
-      }
-
-      actualCommitSha = commits[0].sha;
-      console.log("[Analyze] Using latest commit:", actualCommitSha);
-    }
-
-    commit = await fetchCommit(githubToken, owner, repo, actualCommitSha);
+    // Fetch commit details
+    const commit = await fetchCommit(githubToken, owner, repo, commitSha);
 
     // ========================================================================
     // FILE FILTERING - Exclude non-source files from analysis
@@ -240,7 +199,7 @@ export async function POST(request: NextRequest) {
 
     // Ensure commit.files exists
     const commitFiles = commit.files || [];
-    console.log(`[Analyze] Commit ${actualCommitSha}: ${commitFiles.length} files changed`);
+    console.log(`[Analyze] Commit ${commitSha}: ${commitFiles.length} files changed`);
 
     if (commitFiles.length === 0) {
       console.log(`[Analyze] ⚠️ No files in commit to analyze`);
@@ -263,7 +222,7 @@ export async function POST(request: NextRequest) {
           owner,
           repo,
           file.filename,
-          actualCommitSha
+          commitSha
         );
 
         // Skip very large files (> 50KB) to avoid token limits
@@ -317,13 +276,13 @@ export async function POST(request: NextRequest) {
     const batch = adminDb.batch();
     for (const issue of fullIssues) {
       const issueRef = analysisRef.collection("issues").doc(issue.id);
-      batch.set(issueRef, sanitizeForFirestore(issue as unknown as Record<string, unknown>));
+      batch.set(issueRef, issue);
     }
 
     // Generate summary
     const summary = await generateAnalysisSummary({
       repoName: `${owner}/${repo}`,
-      commitSha: actualCommitSha,
+      commitSha,
       branch: "main",
       issues: fullIssues,
     });
@@ -369,7 +328,7 @@ export async function POST(request: NextRequest) {
             issues: fullIssues,
             summary,
             repoName: `${owner}/${repo}`,
-            commitUrl: `https://github.com/${owner}/${repo}/commit/${actualCommitSha}`,
+            commitUrl: `https://github.com/${owner}/${repo}/commit/${commitSha || 'HEAD'}`,
           });
 
           await analysisRef.update({ emailStatus: "sent", emailSentTo: emailTo });

@@ -30,16 +30,25 @@ export async function GET(request: Request) {
     let githubToken: string | null = null;
 
     try {
-      const tokens = await clerk.users.getUserOauthAccessToken(userId, "github");
+      // Clerk uses "oauth_github" as the provider name
+      const tokens = await clerk.users.getUserOauthAccessToken(userId, "oauth_github");
       if (tokens.data && tokens.data.length > 0) {
         githubToken = tokens.data[0].token;
       }
     } catch {
-      return NextResponse.json({
-        isOwner: false,
-        error: "GitHub not connected",
-        message: "Please connect your GitHub account to verify repository ownership.",
-      });
+      // Also try legacy "github" provider name for backwards compatibility
+      try {
+        const tokens = await clerk.users.getUserOauthAccessToken(userId, "github");
+        if (tokens.data && tokens.data.length > 0) {
+          githubToken = tokens.data[0].token;
+        }
+      } catch {
+        return NextResponse.json({
+          isOwner: false,
+          error: "GitHub not connected",
+          message: "Please connect your GitHub account to verify repository ownership.",
+        });
+      }
     }
 
     if (!githubToken) {

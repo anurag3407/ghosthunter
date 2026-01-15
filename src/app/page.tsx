@@ -1,57 +1,11 @@
-"use client";
+import Link from 'next/link';
+import { Header, Footer, HeroSection, HeroHighlightSection, StickyScrollRevealDemo } from '@/components/layout';
+import { TextHoverEffect } from "@/components/ui/text-hover-effect";
+import FeaturesSectionDemo from "@/components/ui/features-section-demo-3";
+import AnimatedTestimonialsDemo from "@/components/ui/animated-testimonials-demo";
 
-import nextDynamic from 'next/dynamic';
-import { Suspense } from 'react';
-import { Header, HeroSection, HeroHighlightSection, StickyScrollRevealDemo } from '@/components/layout';
-import { StickyFooter } from "@/components/ui/sticky-footer";
-
-// Loading skeleton for heavy sections
-const SectionSkeleton = ({ height = "h-[500px]" }: { height?: string }) => (
-  <div className={`${height} w-full flex items-center justify-center bg-black`}>
-    <div className="w-8 h-8 border-2 border-zinc-500 border-t-white rounded-full animate-spin" />
-  </div>
-);
-
-// Dynamic imports with loading states for heavy components
-const FeaturesSectionDemo = nextDynamic(
-  () => import("@/components/ui/features-section-demo-3"),
-  {
-    loading: () => <SectionSkeleton height="h-[600px]" />,
-    ssr: true,
-  }
-);
-
-const AnimatedTestimonialsDemo = nextDynamic(
-  () => import("@/components/ui/animated-testimonials-demo"),
-  {
-    loading: () => <SectionSkeleton height="h-[400px]" />,
-    ssr: false, // Disable SSR for client-only animations
-  }
-);
-
-const SplineSceneDemo = nextDynamic(
-  () => import("@/components/ui/spline-scene-demo").then(mod => ({ default: mod.SplineSceneDemo })),
-  {
-    loading: () => <SectionSkeleton />,
-    ssr: false, // Spline is client-only
-  }
-);
-
-const TextHoverEffect = nextDynamic(
-  () => import("@/components/ui/text-hover-effect").then(mod => ({ default: mod.TextHoverEffect })),
-  {
-    loading: () => <SectionSkeleton height="h-[20rem]" />,
-    ssr: false,
-  }
-);
-
-const CallToAction = nextDynamic(
-  () => import("@/components/ui/cta").then(mod => ({ default: mod.CallToAction })),
-  {
-    loading: () => <SectionSkeleton height="h-[200px]" />,
-    ssr: true,
-  }
-);
+// Force dynamic rendering - Header uses Clerk auth
+export const dynamic = 'force-dynamic';
 
 export default function LandingPage() {
   return (
@@ -67,47 +21,47 @@ export default function LandingPage() {
         highlightedText="redemption."
       />
 
-      {/* Interactive 3D Spline Scene - Lazy loaded */}
-      <section className="py-16 px-4 max-w-7xl mx-auto">
-        <Suspense fallback={<SectionSkeleton />}>
-          <SplineSceneDemo />
-        </Suspense>
-      </section>
-
       {/* Sticky Scroll Features Section */}
       <StickyScrollRevealDemo />
 
-      {/* Features Section - Contains heavy Globe component */}
-      <Suspense fallback={<SectionSkeleton height="h-[600px]" />}>
-        <FeaturesSectionDemo />
-      </Suspense>
-
-      {/* GHOSTFOUNDER Text Effect */}
-      <section className="py-8 flex items-center justify-center">
-        <Suspense fallback={<SectionSkeleton height="h-[20rem]" />}>
-          <TextHoverEffect
-            text="GHOSTFOUNDER"
-            containerHeight="20rem"
-            viewBox="0 0 500 100"
-          />
-        </Suspense>
-      </section>
+      {/* Features Section */}
+      <FeaturesSectionDemo />
 
       {/* Animated Testimonials Section */}
-      <Suspense fallback={<SectionSkeleton height="h-[400px]" />}>
-        <AnimatedTestimonialsDemo />
-      </Suspense>
+      <AnimatedTestimonialsDemo />
+
+      {/* Text Hover Effect Section */}
+      <div className="h-[20rem] md:h-[20rem] flex items-center justify-center w-full">
+        <TextHoverEffect text="GHOSTFOUNDER" />
+      </div>
 
       {/* CTA Section */}
-      <section className="py-20 px-4">
-        <Suspense fallback={<SectionSkeleton height="h-[200px]" />}>
-          <CallToAction />
-        </Suspense>
+      <section className="py-20 px-4 bg-gradient-to-r from-violet-600 to-indigo-600">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            Ready to get started?
+          </h2>
+          <p className="text-lg text-violet-100 mb-8">
+            Join thousands of teams already using GhostHunter to build better products.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/sign-up"
+              className="px-8 py-3.5 text-base font-medium text-violet-600 bg-white rounded-xl hover:bg-zinc-100 transition-all shadow-lg"
+            >
+              Start Free Trial
+            </Link>
+            <Link
+              href="/contact"
+              className="px-8 py-3.5 text-base font-medium text-white border border-white/30 rounded-xl hover:bg-white/10 transition-all"
+            >
+              Contact Sales
+            </Link>
+          </div>
+        </div>
       </section>
 
-      {/* Sticky Footer Reveal */}
-      <StickyFooter />
+      <Footer />
     </div>
   );
 }
-

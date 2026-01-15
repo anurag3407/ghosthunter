@@ -9,5 +9,3 @@ export { SlideCanvas } from "./SlideCanvas";
 export { SlideList } from "./SlideList";
 export { PropertiesPanel } from "./PropertiesPanel";
 export { EditorToolbar } from "./EditorToolbar";
-export { DeleteDeckButton } from "./DeleteDeckButton";
-export { DeckList } from "./DeckList";

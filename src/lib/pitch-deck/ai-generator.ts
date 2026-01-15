@@ -173,15 +173,15 @@ const STYLE_PRIORITIES: Record<DeckStyle, string> = {
 
 function formatProfile(profile?: Partial<StartupProfile>): string {
   if (!profile) return "Not provided";
-
+  
   const sections: string[] = [];
-
+  
   if (profile.companyName) sections.push(`Company: ${profile.companyName}`);
   if (profile.oneLiner) sections.push(`One-liner: ${profile.oneLiner}`);
   if (profile.targetCustomer) sections.push(`Target Customer: ${profile.targetCustomer}`);
   if (profile.problemStatement) sections.push(`Problem: ${profile.problemStatement}`);
   if (profile.solutionDescription) sections.push(`Solution: ${profile.solutionDescription}`);
-
+  
   if (profile.metrics) {
     const m = profile.metrics;
     const metricLines: string[] = [];
@@ -192,44 +192,44 @@ function formatProfile(profile?: Partial<StartupProfile>): string {
     if (m.retention) metricLines.push(`Retention: ${m.retention}`);
     if (metricLines.length) sections.push(`Metrics:\n${metricLines.join("\n")}`);
   }
-
+  
   if (profile.marketSize) {
     const ms = profile.marketSize;
     if (ms.tam || ms.sam || ms.som) {
       sections.push(`Market Size: TAM ${ms.tam || "?"}, SAM ${ms.sam || "?"}, SOM ${ms.som || "?"}`);
     }
   }
-
+  
   if (profile.competitors?.length) {
     sections.push(`Competitors: ${profile.competitors.join(", ")}`);
   }
-
+  
   if (profile.competitiveAdvantage) {
     sections.push(`Competitive Advantage: ${profile.competitiveAdvantage}`);
   }
-
+  
   if (profile.team?.length) {
     sections.push(`Team: ${profile.team.map(t => `${t.name} (${t.role})`).join(", ")}`);
   }
-
+  
   if (profile.fundingAsk) {
     sections.push(`Funding Ask: ${profile.fundingAsk.amount} (${profile.fundingAsk.type})`);
     if (profile.fundingAsk.useOfFunds?.length) {
       sections.push(`Use of Funds: ${profile.fundingAsk.useOfFunds.join(", ")}`);
     }
   }
-
+  
   return sections.length ? sections.join("\n\n") : "Not provided";
 }
 
 function formatGithubMeta(meta?: { stars?: number; forks?: number; contributors?: number }): string {
   if (!meta) return "Not available";
-
+  
   const lines: string[] = [];
   if (meta.stars) lines.push(`Stars: ${meta.stars}`);
   if (meta.forks) lines.push(`Forks: ${meta.forks}`);
   if (meta.contributors) lines.push(`Contributors: ${meta.contributors}`);
-
+  
   return lines.length ? lines.join(", ") : "Not available";
 }
 
@@ -255,10 +255,10 @@ function createSlideFromContent(
   const slideType = content.type as SlideType;
   const layout = getDefaultLayout(slideType);
   const layoutId = layout?.id || `${slideType}-default`;
-
+  
   const elements: SlideElement[] = [];
   let elementOrder = 0;
-
+  
   // Create headline element
   if (content.headline) {
     elements.push({
@@ -282,7 +282,7 @@ function createSlideFromContent(
       },
     } as TextElement);
   }
-
+  
   // Create subheadline element
   if (content.subheadline) {
     elements.push({
@@ -306,7 +306,7 @@ function createSlideFromContent(
       },
     } as TextElement);
   }
-
+  
   // Create bullets element
   if (content.bullets?.length) {
     elements.push({
@@ -330,7 +330,7 @@ function createSlideFromContent(
       itemSpacing: 16,
     } as BulletListElement);
   }
-
+  
   // Create body text element
   if (content.bodyText && !content.bullets?.length) {
     elements.push({
@@ -353,7 +353,7 @@ function createSlideFromContent(
       },
     } as TextElement);
   }
-
+  
   // Create metric elements
   if (content.metrics?.length) {
     const metricWidth = Math.min(300, (SLIDE_WIDTH - 120 - (content.metrics.length - 1) * 40) / content.metrics.length);
@@ -389,10 +389,10 @@ function createSlideFromContent(
       } as MetricElement);
     });
   }
-
+  
   // Create warnings
   const warnings: SlideWarning[] = [];
-
+  
   content.warnings?.forEach((warning, index) => {
     warnings.push({
       id: `warn-${slideId}-${index}`,
@@ -401,7 +401,7 @@ function createSlideFromContent(
       message: warning,
     });
   });
-
+  
   content.placeholders?.forEach((placeholder, index) => {
     warnings.push({
       id: `placeholder-${slideId}-${index}`,
@@ -411,7 +411,7 @@ function createSlideFromContent(
       suggestion: "Add this information to strengthen your deck",
     });
   });
-
+  
   const slide: Slide = {
     id: slideId,
     type: slideType,
@@ -423,7 +423,7 @@ function createSlideFromContent(
     contentScore: content.contentScore,
     warnings,
   };
-
+  
   // Only add notes if there are suggestions
   if (content.suggestions?.length) {
     slide.notes = {
@@ -431,7 +431,7 @@ function createSlideFromContent(
       aiSuggestions: content.suggestions,
     };
   }
-
+  
   return slide;
 }
 
@@ -444,37 +444,37 @@ export async function generateDeckFromSources(
 ): Promise<GenerateDeckResponse> {
   const genId = `gen-${Date.now()}-${Math.random().toString(36).substring(7)}`;
   const startTime = Date.now();
-
+  
   console.log(`${LOG_PREFIX} ----------------------------------------`);
   console.log(`${LOG_PREFIX} [${genId}] Starting enhanced deck generation`);
   console.log(`${LOG_PREFIX} [${genId}] Style: ${request.style}, Tone: ${request.tone}`);
-
+  
   // Validate API key
   if (!process.env.GOOGLE_AI_API_KEY) {
     throw new Error("GOOGLE_AI_API_KEY is not configured");
   }
-
+  
   // Initialize model
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.0-flash",
     apiKey: process.env.GOOGLE_AI_API_KEY,
     temperature: 0.7,
   });
-
+  
   // Prepare prompt
   const essentialSlides = getEssentialSlides(request.style);
-
+  
   const promptTemplate = new PromptTemplate({
     template: DECK_GENERATION_PROMPT,
     inputVariables: [
-      "readme", "profile", "githubMeta", "deckStyle",
+      "readme", "profile", "githubMeta", "deckStyle", 
       "tone", "essentialSlides", "toneGuidelines", "priorities"
     ],
     partialVariables: {
       format_instructions: parser.getFormatInstructions(),
     },
   });
-
+  
   const formattedPrompt = await promptTemplate.format({
     readme: request.readme || "No README provided",
     profile: formatProfile(request.profile),
@@ -485,18 +485,18 @@ export async function generateDeckFromSources(
     toneGuidelines: TONE_GUIDELINES[request.tone],
     priorities: STYLE_PRIORITIES[request.style],
   });
-
+  
   console.log(`${LOG_PREFIX} [${genId}] Prompt prepared, invoking AI...`);
-
+  
   // Invoke AI
   const response = await model.invoke(formattedPrompt);
   const content = response.content as string;
-
+  
   console.log(`${LOG_PREFIX} [${genId}] AI response received, parsing...`);
-
+  
   // Parse response
   let parsedOutput: DeckGenerationOutput;
-
+  
   try {
     parsedOutput = await parser.parse(content);
   } catch {
@@ -508,17 +508,17 @@ export async function generateDeckFromSources(
       throw new Error("Failed to parse AI response");
     }
   }
-
+  
   console.log(`${LOG_PREFIX} [${genId}] Parsed ${parsedOutput.slides.length} slides`);
-
+  
   // Build deck
   const deckId = uuidv4();
   const defaultTheme = getDefaultTheme();
-
-  const slides: Slide[] = parsedOutput.slides.map((slideContent, index) =>
+  
+  const slides: Slide[] = parsedOutput.slides.map((slideContent, index) => 
     createSlideFromContent(slideContent, index)
   );
-
+  
   const deck: Deck = {
     id: deckId,
     userId: "", // Will be set by API route
@@ -541,7 +541,7 @@ export async function generateDeckFromSources(
     repoName: request.repoName,
     repoOwner: request.repoOwner,
   };
-
+  
   // Collect all warnings
   const allWarnings: SlideWarning[] = [];
   slides.forEach(slide => {
@@ -549,7 +549,7 @@ export async function generateDeckFromSources(
       allWarnings.push(...slide.warnings);
     }
   });
-
+  
   // Add missing slides warnings
   parsedOutput.missingSlides.forEach((slideType, index) => {
     allWarnings.push({
@@ -560,11 +560,11 @@ export async function generateDeckFromSources(
       suggestion: `Add a ${slideType} slide to strengthen your pitch`,
     });
   });
-
+  
   const duration = Date.now() - startTime;
   console.log(`${LOG_PREFIX} [${genId}] Generation completed in ${duration}ms`);
   console.log(`${LOG_PREFIX} ----------------------------------------`);
-
+  
   return {
     deck,
     warnings: allWarnings,
@@ -607,34 +607,34 @@ export async function improveText(
   deckContext?: { projectName: string; tagline: string; tone: ContentTone }
 ): Promise<string> {
   console.log(`${LOG_PREFIX} Improving text: action=${action}, slideType=${slideType}`);
-
+  
   if (!process.env.GOOGLE_AI_API_KEY) {
     throw new Error("GOOGLE_AI_API_KEY is not configured");
   }
-
+  
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.0-flash",
     apiKey: process.env.GOOGLE_AI_API_KEY,
     temperature: 0.7,
   });
-
+  
   const promptTemplate = new PromptTemplate({
     template: TEXT_IMPROVEMENT_PROMPT,
     inputVariables: ["slideType", "deckContext", "text", "action"],
   });
-
+  
   const formattedPrompt = await promptTemplate.format({
     slideType,
-    deckContext: deckContext
+    deckContext: deckContext 
       ? `Project: ${deckContext.projectName}, Tagline: ${deckContext.tagline}, Tone: ${deckContext.tone}`
       : "General pitch deck",
     text,
     action,
   });
-
+  
   const response = await model.invoke(formattedPrompt);
   const improvedText = (response.content as string).trim();
-
+  
   // Clean up any markdown formatting
   return improvedText
     .replace(/^["']|["']$/g, "")
@@ -709,17 +709,17 @@ export async function checkDeckHealth(
   profile?: StartupProfile
 ): Promise<HealthCheckResult> {
   console.log(`${LOG_PREFIX} Running health check for deck: ${deck.id}`);
-
+  
   if (!process.env.GOOGLE_AI_API_KEY) {
     throw new Error("GOOGLE_AI_API_KEY is not configured");
   }
-
+  
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.0-flash",
     apiKey: process.env.GOOGLE_AI_API_KEY,
     temperature: 0.3, // Lower for more consistent analysis
   });
-
+  
   // Prepare slides summary for the AI
   const slidesSummary = deck.slides.map(slide => {
     const textContent = slide.elements
@@ -731,38 +731,38 @@ export async function checkDeckHealth(
         return (el as TextElement).content;
       })
       .join("\n");
-
+    
     return {
       id: slide.id,
       type: slide.type,
       content: textContent || "[No text content]",
     };
   });
-
+  
   const promptTemplate = new PromptTemplate({
     template: HEALTH_CHECK_PROMPT,
     inputVariables: ["projectName", "tagline", "slidesJson", "profile"],
   });
-
+  
   const formattedPrompt = await promptTemplate.format({
     projectName: deck.projectName,
     tagline: deck.tagline,
     slidesJson: JSON.stringify(slidesSummary, null, 2),
     profile: formatProfile(profile),
   });
-
+  
   const response = await model.invoke(formattedPrompt);
   const content = response.content as string;
-
+  
   // Parse response
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error("Failed to parse health check response");
   }
-
+  
   const result: HealthCheckResult = JSON.parse(jsonMatch[0]);
-
+  
   console.log(`${LOG_PREFIX} Health check complete: score=${result.overallScore}`);
-
+  
   return result;
 }

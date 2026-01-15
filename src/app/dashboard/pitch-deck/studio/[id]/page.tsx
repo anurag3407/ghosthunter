@@ -9,9 +9,9 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import {
-  Loader2,
-  AlertCircle,
+import { 
+  Loader2, 
+  AlertCircle, 
   ChevronLeft,
   X,
   CheckCircle,
@@ -40,13 +40,13 @@ function HealthCheckModal({ healthCheck, onClose }: HealthCheckModalProps) {
     if (score >= 60) return "text-amber-400";
     return "text-red-400";
   };
-
+  
   const getScoreBg = (score: number) => {
     if (score >= 80) return "bg-green-500/10";
     if (score >= 60) return "bg-amber-500/10";
     return "bg-red-500/10";
   };
-
+  
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="bg-zinc-900 rounded-2xl border border-zinc-800 w-full max-w-2xl max-h-[80vh] overflow-hidden">
@@ -63,7 +63,7 @@ function HealthCheckModal({ healthCheck, onClose }: HealthCheckModalProps) {
             <X className="w-5 h-5" />
           </button>
         </div>
-
+        
         {/* Score */}
         <div className="p-6 border-b border-zinc-800">
           <div className={`flex items-center justify-center w-24 h-24 mx-auto rounded-full ${getScoreBg(healthCheck.overallScore)}`}>
@@ -73,7 +73,7 @@ function HealthCheckModal({ healthCheck, onClose }: HealthCheckModalProps) {
           </div>
           <p className="text-center text-sm text-zinc-400 mt-2">Overall Score</p>
         </div>
-
+        
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[40vh] space-y-6">
           {/* Issues */}
@@ -93,7 +93,7 @@ function HealthCheckModal({ healthCheck, onClose }: HealthCheckModalProps) {
               </ul>
             </div>
           )}
-
+          
           {/* Suggestions */}
           {healthCheck.suggestions.length > 0 && (
             <div>
@@ -111,7 +111,7 @@ function HealthCheckModal({ healthCheck, onClose }: HealthCheckModalProps) {
               </ul>
             </div>
           )}
-
+          
           {/* Strengths */}
           {healthCheck.strengths.length > 0 && (
             <div>
@@ -129,7 +129,7 @@ function HealthCheckModal({ healthCheck, onClose }: HealthCheckModalProps) {
               </ul>
             </div>
           )}
-
+          
           {/* Slide Feedback */}
           {healthCheck.slideFeedback.length > 0 && (
             <div>
@@ -155,7 +155,7 @@ function HealthCheckModal({ healthCheck, onClose }: HealthCheckModalProps) {
             </div>
           )}
         </div>
-
+        
         {/* Footer */}
         <div className="p-4 border-t border-zinc-800 flex justify-end">
           <button
@@ -182,7 +182,7 @@ interface PresentationModeProps {
 function PresentationMode({ deck, onClose }: PresentationModeProps) {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const theme = getTheme(deck.themeId) || getTheme("minimal-dark")!;
-
+  
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -193,16 +193,16 @@ function PresentationMode({ deck, onClose }: PresentationModeProps) {
         setCurrentSlideIndex(prev => Math.max(prev - 1, 0));
       }
     };
-
+    
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [deck.slides.length, onClose]);
-
+  
   const visibleSlides = deck.slides.filter(s => !s.hidden);
   const currentSlide = visibleSlides[currentSlideIndex];
-
+  
   if (!currentSlide) return null;
-
+  
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
@@ -221,14 +221,14 @@ function PresentationMode({ deck, onClose }: PresentationModeProps) {
           </div>
         </div>
       </div>
-
+      
       {/* Controls */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4">
         <div className="px-4 py-2 bg-black/50 backdrop-blur rounded-full text-white text-sm">
           {currentSlideIndex + 1} / {visibleSlides.length}
         </div>
       </div>
-
+      
       <button
         onClick={onClose}
         className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white"
@@ -247,22 +247,22 @@ export default function PitchDeckStudioPage() {
   const params = useParams();
   const router = useRouter();
   const deckId = params?.id as string;
-
-  const {
-    deck,
-    setDeck,
-    currentSlideId: _currentSlideId,
+  
+  const { 
+    deck, 
+    setDeck, 
+    currentSlideId,
     healthCheck,
     setHealthCheck,
   } = useEditorStore();
-
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHealthCheck, setShowHealthCheck] = useState(false);
   const [showPresentation, setShowPresentation] = useState(false);
-
+  
   // Load deck
   useEffect(() => {
     const loadDeck = async () => {
@@ -271,13 +271,13 @@ export default function PitchDeckStudioPage() {
         setIsLoading(false);
         return;
       }
-
+      
       try {
         const response = await fetch(`/api/pitch-deck/decks/${deckId}`);
         if (!response.ok) {
           throw new Error("Failed to load deck");
         }
-
+        
         const data = await response.json();
         setDeck(data.deck);
       } catch (err) {
@@ -287,17 +287,17 @@ export default function PitchDeckStudioPage() {
         setIsLoading(false);
       }
     };
-
+    
     loadDeck();
   }, [deckId, setDeck]);
-
+  
   // Show health check modal when updated
   useEffect(() => {
     if (healthCheck) {
       setShowHealthCheck(true);
     }
   }, [healthCheck]);
-
+  
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -317,15 +317,15 @@ export default function PitchDeckStudioPage() {
         useEditorStore.getState().redo();
       }
     };
-
+    
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
+  
   // Save handler
   const handleSave = useCallback(async () => {
     if (!deck) return;
-
+    
     setIsSaving(true);
     try {
       await fetch(`/api/pitch-deck/decks/${deck.id}`, {
@@ -339,11 +339,11 @@ export default function PitchDeckStudioPage() {
       setIsSaving(false);
     }
   }, [deck]);
-
+  
   // Export handler
   const handleExport = useCallback(async (format: "pdf" | "pptx" | "png") => {
     if (!deck) return;
-
+    
     setIsExporting(true);
     try {
       const response = await fetch("/api/pitch-deck/export", {
@@ -351,7 +351,7 @@ export default function PitchDeckStudioPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deckId: deck.id, format }),
       });
-
+      
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -367,7 +367,7 @@ export default function PitchDeckStudioPage() {
       setIsExporting(false);
     }
   }, [deck]);
-
+  
   // Loading state
   if (isLoading) {
     return (
@@ -379,7 +379,7 @@ export default function PitchDeckStudioPage() {
       </div>
     );
   }
-
+  
   // Error state
   if (error || !deck) {
     return (
@@ -399,10 +399,10 @@ export default function PitchDeckStudioPage() {
       </div>
     );
   }
-
+  
   // Get theme for CSS variables
   const theme = getTheme(deck.themeId) || getTheme("minimal-dark")!;
-
+  
   return (
     <div
       className="h-screen bg-zinc-950 flex flex-col overflow-hidden"
@@ -423,25 +423,25 @@ export default function PitchDeckStudioPage() {
         isSaving={isSaving}
         isExporting={isExporting}
       />
-
+      
       {/* Main Content */}
       <div className="flex-1 flex min-h-0">
         {/* Left Sidebar: Slides */}
         <div className="w-64 flex-shrink-0">
           <SlideList />
         </div>
-
+        
         {/* Center: Canvas */}
         <div className="flex-1 overflow-hidden">
           <SlideCanvas />
         </div>
-
+        
         {/* Right Sidebar: Properties */}
         <div className="w-72 flex-shrink-0">
           <PropertiesPanel />
         </div>
       </div>
-
+      
       {/* Modals */}
       {showHealthCheck && healthCheck && (
         <HealthCheckModal
@@ -452,7 +452,7 @@ export default function PitchDeckStudioPage() {
           }}
         />
       )}
-
+      
       {showPresentation && (
         <PresentationMode
           deck={deck}
