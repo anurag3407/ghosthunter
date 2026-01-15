@@ -4,7 +4,6 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Presentation,
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
@@ -15,7 +14,6 @@ import {
   Loader2,
   Plus,
   Trash2,
-  GripVertical,
 } from "lucide-react";
 
 interface Slide {
@@ -145,13 +143,12 @@ export default function PitchDeckDetailPage({ params }: { params: Promise<{ id: 
         <div style="page-break-after: always; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);">
           <h1 style="font-size: 2.5rem; color: white; margin-bottom: 1rem; text-align: center;">${slide.title}</h1>
           ${slide.subtitle ? `<h2 style="font-size: 1.5rem; color: #a0a0a0; margin-bottom: 2rem; text-align: center;">${slide.subtitle}</h2>` : ""}
-          ${
-            slide.bullets
+          ${slide.bullets
               ? `<ul style="list-style: none; padding: 0; text-align: left; max-width: 600px;">
                   ${slide.bullets.map((b) => `<li style="font-size: 1.25rem; color: #e0e0e0; margin: 0.5rem 0; padding-left: 1.5rem; position: relative;"><span style="position: absolute; left: 0;">•</span>${b}</li>`).join("")}
                  </ul>`
               : ""
-          }
+            }
           ${slide.content ? `<p style="font-size: 1.25rem; color: #e0e0e0; text-align: center; max-width: 600px;">${slide.content}</p>` : ""}
         </div>
       `
@@ -240,16 +237,14 @@ export default function PitchDeckDetailPage({ params }: { params: Promise<{ id: 
                 setCurrentSlideIndex(index);
                 setIsEditing(false);
               }}
-              className={`w-full p-2 rounded-lg mb-2 transition-all ${
-                currentSlideIndex === index
+              className={`w-full p-2 rounded-lg mb-2 transition-all ${currentSlideIndex === index
                   ? "bg-blue-500/20 border border-blue-500/30"
                   : "bg-zinc-800/50 hover:bg-zinc-800 border border-transparent"
-              }`}
+                }`}
             >
               <div
-                className={`aspect-video rounded bg-gradient-to-br ${
-                  slideTypeColors[slide.type] || "from-zinc-600 to-zinc-700"
-                } p-2 mb-1`}
+                className={`aspect-video rounded bg-gradient-to-br ${slideTypeColors[slide.type] || "from-zinc-600 to-zinc-700"
+                  } p-2 mb-1`}
               >
                 <p className="text-[8px] text-white/80 font-medium truncate">{slide.title}</p>
               </div>
@@ -262,9 +257,8 @@ export default function PitchDeckDetailPage({ params }: { params: Promise<{ id: 
         <div className="flex-1 p-6 flex flex-col">
           {/* Slide Content */}
           <div
-            className={`flex-1 rounded-2xl bg-gradient-to-br ${
-              slideTypeColors[currentSlide?.type || "title"] || "from-zinc-600 to-zinc-700"
-            } p-8 flex flex-col justify-center items-center text-center relative`}
+            className={`flex-1 rounded-2xl bg-gradient-to-br ${slideTypeColors[currentSlide?.type || "title"] || "from-zinc-600 to-zinc-700"
+              } p-8 flex flex-col justify-center items-center text-center relative`}
           >
             {isEditing && editedSlide ? (
               /* Edit Mode */

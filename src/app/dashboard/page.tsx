@@ -9,7 +9,6 @@ import {
   Coins,
   Database,
   ArrowRight,
-  Clock,
   Activity,
 } from "lucide-react";
 

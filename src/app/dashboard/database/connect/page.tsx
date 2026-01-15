@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -30,29 +30,29 @@ const databaseTypes = [
 // Auto-detect database type from connection string
 function detectDatabaseType(connectionString: string): DatabaseType | null {
   const trimmed = connectionString.trim().toLowerCase();
-  
+
   if (!trimmed) return null;
-  
+
   // MongoDB detection
   if (trimmed.startsWith("mongodb://") || trimmed.startsWith("mongodb+srv://")) {
     return "mongodb";
   }
-  
+
   // Supabase detection
   if (trimmed.includes("supabase.co") || trimmed.includes("supabase.com")) {
     return "supabase";
   }
-  
+
   // PostgreSQL detection
   if (trimmed.startsWith("postgres://") || trimmed.startsWith("postgresql://")) {
     return "postgresql";
   }
-  
+
   // MySQL detection
   if (trimmed.startsWith("mysql://")) {
     return "mysql";
   }
-  
+
   return null;
 }
 
@@ -61,18 +61,18 @@ export default function ConnectDatabasePage() {
   const [selectedType, setSelectedType] = useState<DatabaseType>("postgresql");
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>("string");
   const [connectionName, setConnectionName] = useState("");
-  
+
   // Connection string mode
   const [connectionString, setConnectionString] = useState("");
   const [detectedType, setDetectedType] = useState<DatabaseType | null>(null);
-  
+
   // Form mode
   const [host, setHost] = useState("");
   const [port, setPort] = useState("5432");
   const [database, setDatabase] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -125,13 +125,13 @@ export default function ConnectDatabasePage() {
       const body = connectionMode === "string"
         ? { connectionString }
         : {
-            type: selectedType,
-            host,
-            port: parseInt(port),
-            database,
-            username,
-            password,
-          };
+          type: selectedType,
+          host,
+          port: parseInt(port),
+          database,
+          username,
+          password,
+        };
 
       const response = await fetch("/api/database/test", {
         method: "POST",
@@ -163,14 +163,14 @@ export default function ConnectDatabasePage() {
       const body = connectionMode === "string"
         ? { name: connectionName, type: detectedType || selectedType, connectionString }
         : {
-            name: connectionName,
-            type: selectedType,
-            host,
-            port: parseInt(port),
-            database,
-            username,
-            password,
-          };
+          name: connectionName,
+          type: selectedType,
+          host,
+          port: parseInt(port),
+          database,
+          username,
+          password,
+        };
 
       const response = await fetch("/api/database/connections", {
         method: "POST",
@@ -191,23 +191,23 @@ export default function ConnectDatabasePage() {
     }
   };
 
-  const isFormValid = connectionMode === "string" 
+  const isFormValid = connectionMode === "string"
     ? connectionName && connectionString
     : connectionName && host && port && database && username && password;
 
   // Generate detection badge based on type
   const getDetectionBadge = () => {
     if (!detectedType) return null;
-    
+
     const badges: Record<DatabaseType, { label: string; icon: string; color: string }> = {
       supabase: { label: "Supabase Detected", icon: "⚡", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
       mongodb: { label: "MongoDB Detected", icon: "🍃", color: "bg-green-500/20 text-green-400 border-green-500/30" },
       postgresql: { label: "PostgreSQL Detected", icon: "🐘", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
       mysql: { label: "MySQL Detected", icon: "🐬", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
     };
-    
+
     const badge = badges[detectedType];
-    
+
     return (
       <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ${badge.color} animate-in fade-in slide-in-from-left-2 duration-300`}>
         <Sparkles className="w-3.5 h-3.5" />
@@ -246,22 +246,20 @@ export default function ConnectDatabasePage() {
           <div className="flex rounded-xl bg-zinc-800 p-1">
             <button
               onClick={() => setConnectionMode("string")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                connectionMode === "string"
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${connectionMode === "string"
                   ? "bg-green-500 text-white"
                   : "text-zinc-400 hover:text-white"
-              }`}
+                }`}
             >
               <Link2 className="w-4 h-4" />
               Connection String
             </button>
             <button
               onClick={() => setConnectionMode("form")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-                connectionMode === "form"
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium transition-all ${connectionMode === "form"
                   ? "bg-green-500 text-white"
                   : "text-zinc-400 hover:text-white"
-              }`}
+                }`}
             >
               <Database className="w-4 h-4" />
               Manual Entry
@@ -314,11 +312,10 @@ export default function ConnectDatabasePage() {
                   <button
                     key={type.id}
                     onClick={() => handleTypeChange(type.id)}
-                    className={`p-4 rounded-xl border transition-all text-center ${
-                      selectedType === type.id
+                    className={`p-4 rounded-xl border transition-all text-center ${selectedType === type.id
                         ? "bg-green-500/10 border-green-500/30"
                         : "bg-zinc-800/50 border-zinc-700 hover:border-zinc-600"
-                    }`}
+                      }`}
                   >
                     <span className="text-2xl mb-2 block">{type.icon}</span>
                     <span className="text-xs font-medium text-white">{type.name}</span>

@@ -15,12 +15,28 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SEPOLIA_RPC_URL: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL,
     NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS: process.env.NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS,
   },
-  // Optimize image handling
+  // Optimize image handling with specific domains
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'assets.aceternity.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.clerk.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
       },
     ],
   },

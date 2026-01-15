@@ -45,6 +45,7 @@ export default function NewEquityProjectPage() {
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isMinting, setIsMinting] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [mintStatus, setMintStatus] = useState<"idle" | "minting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [txHash, setTxHash] = useState("");

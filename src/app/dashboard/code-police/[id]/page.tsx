@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import Link from "next/link";
 import {
   Shield,
@@ -23,7 +23,6 @@ import {
   GitPullRequest,
   Wrench,
   ExternalLink,
-  Code,
 } from "lucide-react";
 
 import { ProjectSettings } from "@/components/code-police/ProjectSettings";
@@ -106,7 +105,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [isCreatingPR, setIsCreatingPR] = useState<string | null>(null);
 
   // Fetch project and analysis runs
-  const fetchData = async (showRefresh = false) => {
+  const fetchData = useCallback(async (showRefresh = false) => {
     if (showRefresh) setIsRefreshing(true);
     try {
       // Fetch project
@@ -126,8 +125,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       if (runsRes.ok && runsData.runs) {
         setRuns(runsData.runs);
         // Expand first run by default
-        if (runsData.runs.length > 0 && !expandedRun) {
-          setExpandedRun(runsData.runs[0].id);
+        if (runsData.runs.length > 0) {
+          setExpandedRun((prev) => prev || runsData.runs[0].id);
         }
       }
     } catch (err) {
@@ -136,11 +135,11 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [projectId]);
 
   useEffect(() => {
     fetchData();
-  }, [projectId]);
+  }, [fetchData]);
 
   // Update project settings
   const handleUpdateProject = async (updates: Partial<Project>) => {
@@ -346,7 +345,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }
   };
 
-  const formatDate = (dateStr: string) => {
+  // Helper function to format relative time
+  const _formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
     const diff = now.getTime() - date.getTime();

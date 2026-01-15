@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import createGlobe from "cobe";
 import { useEffect, useRef } from "react";
@@ -107,7 +108,7 @@ const FeatureDescription = ({ children }: { children?: React.ReactNode }) => {
 import { CodeBlock } from "@/components/ui/code-block";
 
 export const SkeletonOne = () => {
-    const code = `async function processSecurePayment(userId, amount) {
+  const code = `async function processSecurePayment(userId, amount) {
   // 🚨 CRITICAL VULNERABILITY: Hardcoded API Key
   const STRIPE_SECRET = "sk_live_51M..."; 
 
@@ -131,16 +132,16 @@ export const SkeletonOne = () => {
     <div className="relative flex py-8 px-2 gap-10 h-full">
       <div className="w-full p-5 mx-auto bg-white dark:bg-neutral-900 shadow-2xl group h-full">
         <div className="flex flex-1 w-full h-full flex-col space-y-2">
-            <CodeBlock
-                language="javascript"
-                filename="payment-processor.js"
-                highlights={[
-                  { line: 3, color: "rgba(239, 68, 68, 0.2)", annotation: "Use process.env" },
-                  { line: 6, color: "rgba(239, 68, 68, 0.2)", annotation: "Use parameterized query" },
-                  { line: 11, color: "rgba(239, 68, 68, 0.2)", annotation: "Remove in prod" },
-                ]}
-                code={code}
-            />
+          <CodeBlock
+            language="javascript"
+            filename="payment-processor.js"
+            highlights={[
+              { line: 3, color: "rgba(239, 68, 68, 0.2)", annotation: "Use process.env" },
+              { line: 6, color: "rgba(239, 68, 68, 0.2)", annotation: "Use parameterized query" },
+              { line: 11, color: "rgba(239, 68, 68, 0.2)", annotation: "Remove in prod" },
+            ]}
+            code={code}
+          />
         </div>
       </div>
     </div>
@@ -158,9 +159,9 @@ export const SkeletonThree = () => {
         <div className="flex flex-1 w-full h-full flex-col space-y-2  relative">
           {/* TODO */}
           <IconBrandYoutubeFilled className="h-20 w-20 absolute z-10 inset-0 text-red-500 m-auto " />
-          <img
+          <Image
             src="https://assets.aceternity.com/fireship.jpg"
-            alt="header"
+            alt="Demo video thumbnail"
             width={800}
             height={800}
             className="h-full w-full aspect-square object-cover object-center rounded-sm blur-none group-hover/image:blur-md transition-all duration-200"
@@ -207,11 +208,11 @@ export const SkeletonTwo = () => {
             whileTap="whileTap"
             className="rounded-xl -mr-4 mt-4 p-1 bg-white dark:bg-neutral-800 dark:border-neutral-700 border border-neutral-100 shrink-0 overflow-hidden"
           >
-            <img
+            <Image
               src={image}
-              alt="bali images"
-              width="500"
-              height="500"
+              alt="Pitch deck gallery"
+              width={500}
+              height={500}
               className="rounded-lg h-20 w-20 md:h-40 md:w-40 object-cover shrink-0"
             />
           </motion.div>

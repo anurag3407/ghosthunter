@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { UserProfile, useUser } from "@clerk/nextjs";
 import {
   Settings,
@@ -47,7 +48,7 @@ function SettingsContent() {
   const { user, isLoaded } = useUser();
   const [showAccountModal, setShowAccountModal] = useState(false);
   const justConnected = searchParams.get("github_connected") === "true";
-  
+
   // Check if GitHub is connected via Clerk
   const githubAccount = user?.externalAccounts?.find(
     (account) => account.provider === "github"
@@ -90,9 +91,11 @@ function SettingsContent() {
 
         <div className="flex items-center gap-6 mb-6">
           {user?.imageUrl ? (
-            <img
+            <Image
               src={user.imageUrl}
               alt="Profile"
+              width={80}
+              height={80}
               className="w-20 h-20 rounded-full"
             />
           ) : (
@@ -170,7 +173,7 @@ function SettingsContent() {
         {!isGithubConnected && (
           <div className="mt-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
             <p className="text-sm text-yellow-400">
-              <strong>Note:</strong> GitHub connection is required for Code Police (code review) 
+              <strong>Note:</strong> GitHub connection is required for Code Police (code review)
               and Pitch Deck Generator (repository analysis). Click &quot;Connect GitHub&quot; above to get started.
             </p>
           </div>
@@ -276,7 +279,7 @@ function SettingsContent() {
             >
               ✕
             </button>
-            <UserProfile 
+            <UserProfile
               routing="hash"
               appearance={{
                 elements: {

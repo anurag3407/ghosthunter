@@ -12,7 +12,6 @@ import {
   ArrowUpRight,
   ExternalLink,
   Briefcase,
-  ArrowDownLeft,
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
