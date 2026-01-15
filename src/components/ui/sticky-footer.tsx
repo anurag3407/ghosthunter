@@ -10,8 +10,8 @@ import {
     LinkedInLogoIcon,
     VideoIcon,
 } from '@radix-ui/react-icons';
-import { Button } from './button';
-import { TextHoverEffect } from './text-hover-effect';
+import { Button } from '@/components/ui/button';
+import { TextHoverEffect } from '@/components/ui/text-hover-effect';
 
 
 interface FooterLink {
