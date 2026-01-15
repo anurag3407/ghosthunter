@@ -92,10 +92,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
 
+    // Normalize githubRepoId to number for consistent querying
+    const normalizedRepoId = typeof githubRepoId === 'string' 
+      ? parseInt(githubRepoId, 10) 
+      : githubRepoId;
+
     // Check if tokens have already been minted for this repository
     const existingProjectSnapshot = await adminDb
       .collection("equity_projects")
-      .where("githubRepoId", "==", githubRepoId)
+      .where("githubRepoId", "==", normalizedRepoId)
       .limit(1)
       .get();
 
@@ -114,7 +119,7 @@ export async function POST(request: Request) {
       symbol,
       contractAddress,
       totalSupply: totalSupply || "1000000",
-      githubRepoId,
+      githubRepoId: normalizedRepoId, // Always store as number
       githubRepoFullName,
       githubRepoOwner,
       ownerWalletAddress: ownerWalletAddress || null,

@@ -96,9 +96,38 @@ export async function hasUserMinted(signer: JsonRpcSigner, address: string): Pro
  */
 export async function mintInitialTokens(signer: JsonRpcSigner): Promise<string> {
   const contract = getContract(signer);
-  const tx = await contract.mintInitialTokens();
-  await tx.wait();
-  return tx.hash;
+  
+  try {
+    // First, estimate gas to catch any revert reasons
+    const gasEstimate = await contract.mintInitialTokens.estimateGas();
+    console.log("[Contract] Gas estimate:", gasEstimate.toString());
+    
+    // Execute transaction with extra gas buffer
+    const tx = await contract.mintInitialTokens({
+      gasLimit: gasEstimate * BigInt(120) / BigInt(100), // 20% buffer
+    });
+    
+    console.log("[Contract] Transaction sent:", tx.hash);
+    const receipt = await tx.wait();
+    console.log("[Contract] Transaction mined:", receipt.hash);
+    
+    return tx.hash;
+  } catch (error: any) {
+    console.error("[Contract] Mint failed:", error);
+    
+    // Parse common error messages
+    if (error.message?.includes("Already minted")) {
+      throw new Error("You have already minted your initial tokens");
+    }
+    if (error.message?.includes("user rejected")) {
+      throw new Error("Transaction was rejected");
+    }
+    if (error.code === 'CALL_EXCEPTION') {
+      throw new Error("Contract call failed. Please ensure the contract is deployed on Sepolia testnet.");
+    }
+    
+    throw error;
+  }
 }
 
 /**
