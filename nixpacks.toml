@@ -7,6 +7,7 @@ cmds = ["npm install --legacy-peer-deps"]
 [phases.build]
 cmds = [
   "rm -rf .next/cache",
+  "rm -rf node_modules/.cache",
   "npm run build"
 ]
 

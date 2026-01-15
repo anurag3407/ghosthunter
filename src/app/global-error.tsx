@@ -3,7 +3,7 @@
 /**
  * Global Error Boundary
  * Required for Next.js 16+ when using client-side providers in layout.
- * This handles errors that occur in the root layout.
+ * Must use inline styles and no external dependencies to avoid SSR issues.
  */
 export default function GlobalError({
     error,
@@ -14,15 +14,36 @@ export default function GlobalError({
 }) {
     return (
         <html lang="en">
-            <body className="bg-black text-white min-h-screen flex items-center justify-center">
-                <div className="text-center p-8">
-                    <h1 className="text-4xl font-bold mb-4">Something went wrong</h1>
-                    <p className="text-zinc-400 mb-6">
-                        {error.message || "An unexpected error occurred"}
+            <body
+                style={{
+                    backgroundColor: "#000",
+                    color: "#fff",
+                    minHeight: "100vh",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontFamily: "system-ui, sans-serif",
+                    margin: 0,
+                }}
+            >
+                <div style={{ textAlign: "center", padding: "2rem" }}>
+                    <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>
+                        Something went wrong
+                    </h1>
+                    <p style={{ color: "#a1a1aa", marginBottom: "1.5rem" }}>
+                        {error?.message || "An unexpected error occurred"}
                     </p>
                     <button
-                        onClick={reset}
-                        className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors"
+                        onClick={() => reset()}
+                        style={{
+                            padding: "0.75rem 1.5rem",
+                            backgroundColor: "#7c3aed",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "0.5rem",
+                            cursor: "pointer",
+                            fontSize: "1rem",
+                        }}
                     >
                         Try again
                     </button>
