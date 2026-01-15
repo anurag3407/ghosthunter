@@ -18,10 +18,10 @@ export default function FeaturesSectionDemo() {
         "col-span-1 lg:col-span-4 border-b lg:border-r dark:border-neutral-800",
     },
     {
-      title: "Visual Intelligence",
+      title: "Security & Integrations",
       description:
-        "Transform technical documentation into investor-ready visual narratives automatically with our Pitch Deck Generator.",
-      skeleton: <SkeletonTwo />,
+        "Blockchain-secured equity tokens with immutable records. One-click connect with Google, GitHub, and MetaMask.",
+      skeleton: <SkeletonSecurityIntegrations />,
       className: "border-b col-span-1 lg:col-span-2 dark:border-neutral-800",
     },
     {
@@ -30,7 +30,7 @@ export default function FeaturesSectionDemo() {
         "Watch how our agents collaborate to handle complex startup operations autonomously.",
       skeleton: <SkeletonThree />,
       className:
-        "col-span-1 lg:col-span-3 lg:border-r  dark:border-neutral-800",
+        "col-span-1 lg:col-span-3 lg:border-r dark:border-neutral-800",
     },
     {
       title: "24/7 Global Workforce",
@@ -107,7 +107,7 @@ const FeatureDescription = ({ children }: { children?: React.ReactNode }) => {
 import { CodeBlock } from "@/components/ui/code-block";
 
 export const SkeletonOne = () => {
-    const code = `async function processSecurePayment(userId, amount) {
+  const code = `async function processSecurePayment(userId, amount) {
   // 🚨 CRITICAL VULNERABILITY: Hardcoded API Key
   const STRIPE_SECRET = "sk_live_51M..."; 
 
@@ -131,16 +131,16 @@ export const SkeletonOne = () => {
     <div className="relative flex py-8 px-2 gap-10 h-full">
       <div className="w-full p-5 mx-auto bg-white dark:bg-neutral-900 shadow-2xl group h-full">
         <div className="flex flex-1 w-full h-full flex-col space-y-2">
-            <CodeBlock
-                language="javascript"
-                filename="payment-processor.js"
-                highlights={[
-                  { line: 3, color: "rgba(239, 68, 68, 0.2)", annotation: "Use process.env" },
-                  { line: 6, color: "rgba(239, 68, 68, 0.2)", annotation: "Use parameterized query" },
-                  { line: 11, color: "rgba(239, 68, 68, 0.2)", annotation: "Remove in prod" },
-                ]}
-                code={code}
-            />
+          <CodeBlock
+            language="javascript"
+            filename="payment-processor.js"
+            highlights={[
+              { line: 3, color: "rgba(239, 68, 68, 0.2)", annotation: "Use process.env" },
+              { line: 6, color: "rgba(239, 68, 68, 0.2)", annotation: "Use parameterized query" },
+              { line: 11, color: "rgba(239, 68, 68, 0.2)", annotation: "Remove in prod" },
+            ]}
+            code={code}
+          />
         </div>
       </div>
     </div>
@@ -171,80 +171,215 @@ export const SkeletonThree = () => {
   );
 };
 
-export const SkeletonTwo = () => {
-  const images = [
-    "https://images.unsplash.com/photo-1517322048670-4fba75cbbb62?q=80&w=3000&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "https://images.unsplash.com/photo-1573790387438-4da905039392?q=80&w=3425&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "https://images.unsplash.com/photo-1555400038-63f5ba517a47?q=80&w=3540&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "https://images.unsplash.com/photo-1554931670-4ebfabf6e7a9?q=80&w=3387&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "https://images.unsplash.com/photo-1546484475-7f7bd55792da?q=80&w=2581&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-  ];
-
-  const imageVariants = {
-    whileHover: {
-      scale: 1.1,
-      rotate: 0,
-      zIndex: 100,
-    },
-    whileTap: {
-      scale: 1.1,
-      rotate: 0,
-      zIndex: 100,
-    },
-  };
+// Combined Security & Integrations Skeleton (Stacked Vertically)
+export const SkeletonSecurityIntegrations = () => {
   return (
-    <div className="relative flex flex-col items-start p-8 gap-10 h-full overflow-hidden">
-      {/* TODO */}
-      <div className="flex flex-row -ml-20">
-        {images.map((image, idx) => (
+    <div className="relative flex flex-col items-center justify-start p-6 gap-4 h-full overflow-hidden">
+      {/* TOP: Blockchain Security */}
+      <div className="flex flex-col items-center gap-3">
+        <div className="relative">
+          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <svg className="w-8 h-8 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 17l10 5 10-5" />
+              <path d="M2 12l10 5 10-5" />
+            </svg>
+          </div>
           <motion.div
-            variants={imageVariants}
-            key={"images-first" + idx}
-            style={{
-              rotate: (idx * 5.2 + 3) % 20 - 10,
-            }}
-            whileHover="whileHover"
-            whileTap="whileTap"
-            className="rounded-xl -mr-4 mt-4 p-1 bg-white dark:bg-neutral-800 dark:border-neutral-700 border border-neutral-100 shrink-0 overflow-hidden"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0 w-20 h-20 -left-2 -top-2"
           >
-            <img
-              src={image}
-              alt="bali images"
-              width="500"
-              height="500"
-              className="rounded-lg h-20 w-20 md:h-40 md:w-40 object-cover shrink-0"
-            />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 w-2.5 h-2.5 bg-emerald-500/80 rounded shadow-md" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1 w-2.5 h-2.5 bg-cyan-500/80 rounded shadow-md" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-2.5 h-2.5 bg-purple-500/80 rounded shadow-md" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 w-2.5 h-2.5 bg-pink-500/80 rounded shadow-md" />
           </motion.div>
-        ))}
-      </div>
-      <div className="flex flex-row">
-        {images.map((image, idx) => (
-          <motion.div
-            key={"images-second" + idx}
-            style={{
-              rotate: (idx * 7.5 + 8) % 20 - 10,
-            }}
-            variants={imageVariants}
-            whileHover="whileHover"
-            whileTap="whileTap"
-            className="rounded-xl -mr-4 mt-4 p-1 bg-white dark:bg-neutral-800 dark:border-neutral-700 border border-neutral-100 shrink-0 overflow-hidden"
-          >
-            <img
-              src={image}
-              alt="bali images"
-              width="500"
-              height="500"
-              className="rounded-lg h-20 w-20 md:h-40 md:w-40 object-cover shrink-0"
-            />
-          </motion.div>
-        ))}
+        </div>
+        <div className="flex flex-wrap justify-center gap-1.5">
+          <span className="px-2 py-1 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full">Immutable</span>
+          <span className="px-2 py-1 text-[10px] text-purple-400 bg-purple-500/10 border border-purple-500/20 rounded-full">Encrypted</span>
+        </div>
       </div>
 
-      <div className="absolute left-0 z-[100] inset-y-0 w-20 bg-gradient-to-r from-white dark:from-black to-transparent  h-full pointer-events-none" />
-      <div className="absolute right-0 z-[100] inset-y-0 w-20 bg-gradient-to-l from-white dark:from-black  to-transparent h-full pointer-events-none" />
+      <div className="w-full h-px bg-gradient-to-r from-transparent via-neutral-700 to-transparent" />
+
+      {/* BOTTOM: Easy Integrations */}
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center gap-3">
+          <motion.div whileHover={{ scale: 1.1, y: -3 }} className="w-12 h-12 rounded-xl bg-white/10 border border-neutral-700 flex items-center justify-center shadow-lg cursor-pointer">
+            <svg className="w-6 h-6" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.1, y: -3 }} className="w-12 h-12 rounded-xl bg-zinc-800 border border-neutral-700 flex items-center justify-center shadow-lg cursor-pointer">
+            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+            </svg>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.1, y: -3 }} className="w-12 h-12 rounded-xl bg-orange-500/10 border border-neutral-700 flex items-center justify-center shadow-lg cursor-pointer">
+            <svg className="w-6 h-6" viewBox="0 0 35 33">
+              <path fill="#E2761B" d="M32.958 1l-13.134 9.718 2.442-5.727L32.958 1z" />
+              <path fill="#E4761B" d="M2.663 1l13.017 9.809-2.325-5.818L2.663 1zM28.23 23.533l-3.495 5.339 7.483 2.06 2.143-7.282-6.131-.117z" />
+              <path fill="#F6851B" d="M32.096 15.765l-6.531-1.903 2.075 3.143-3.18 6.165 4.197-.05h6.13l-2.691-7.355z" />
+            </svg>
+          </motion.div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-[10px] text-zinc-400">One-click connect</span>
+        </div>
+      </div>
     </div>
   );
 };
+
+// Blockchain Security Skeleton
+export const SkeletonBlockchain = () => {
+  return (
+    <div className="relative flex flex-col items-center justify-center p-8 gap-6 h-full overflow-hidden">
+      {/* Ethereum-style hexagon network */}
+      <div className="relative">
+        {/* Central blockchain icon */}
+        <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <svg className="w-12 h-12 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
+        </div>
+
+        {/* Orbiting blocks */}
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute inset-0 w-32 h-32 -left-4 -top-4"
+        >
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-4 h-4 bg-emerald-500/80 rounded shadow-lg shadow-emerald-500/50" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-2 w-4 h-4 bg-cyan-500/80 rounded shadow-lg shadow-cyan-500/50" />
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 w-4 h-4 bg-purple-500/80 rounded shadow-lg shadow-purple-500/50" />
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 w-4 h-4 bg-pink-500/80 rounded shadow-lg shadow-pink-500/50" />
+        </motion.div>
+      </div>
+
+      {/* Security badges */}
+      <div className="flex flex-wrap justify-center gap-2 mt-4">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+          <svg className="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+          <span className="text-xs text-emerald-400">Immutable</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20">
+          <svg className="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0110 0v4" />
+          </svg>
+          <span className="text-xs text-purple-400">Encrypted</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
+          <svg className="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          <span className="text-xs text-cyan-400">24/7</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Easy Integrations Skeleton
+export const SkeletonIntegrations = () => {
+  const integrations = [
+    {
+      name: "Google",
+      icon: (
+        <svg className="w-8 h-8" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+        </svg>
+      ),
+      bg: "bg-white/10",
+    },
+    {
+      name: "GitHub",
+      icon: (
+        <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+        </svg>
+      ),
+      bg: "bg-zinc-800",
+    },
+    {
+      name: "MetaMask",
+      icon: (
+        <svg className="w-8 h-8" viewBox="0 0 35 33">
+          <path fill="#E2761B" d="M32.958 1l-13.134 9.718 2.442-5.727L32.958 1z" />
+          <path fill="#E4761B" d="M2.663 1l13.017 9.809-2.325-5.818L2.663 1zM28.23 23.533l-3.495 5.339 7.483 2.06 2.143-7.282-6.131-.117zM.622 23.65l2.127 7.282 7.466-2.06-3.478-5.339-6.115.117z" />
+          <path fill="#E4761B" d="M9.856 14.578l-2.084 3.143 7.433.334-.25-7.983-5.1 4.506zM25.764 14.578l-5.175-4.598-.167 8.075 7.417-.334-2.075-3.143zM10.215 28.872l4.464-2.176-3.857-3.009-.607 5.185zM20.942 26.696l4.447 2.176-.59-5.185-3.857 3.009z" />
+          <path fill="#D7C1B3" d="M25.389 28.872l-4.447-2.176.357 2.903-.042 1.227 4.132-1.954zM10.215 28.872l4.148 1.954-.025-1.227.341-2.903-4.464 2.176z" />
+          <path fill="#233447" d="M14.438 21.787l-3.715-1.093 2.624-1.202 1.09 2.295zM21.183 21.787l1.09-2.295 2.64 1.202-3.73 1.093z" />
+          <path fill="#CD6116" d="M10.215 28.872l.632-5.339-4.11.117 3.478 5.222zM24.773 23.533l.616 5.339 3.494-5.222-4.11-.117zM27.839 17.72l-7.417.334.69 3.733 1.09-2.295 2.64 1.202 2.997-2.974zM10.723 20.694l2.624-1.202 1.09 2.295.69-3.733-7.433-.334 3.029 2.974z" />
+          <path fill="#E4751F" d="M7.694 17.72l3.162 6.165-.108-3.191-3.054-2.974zM24.842 20.694l-.125 3.191 3.18-6.165-3.055 2.974zM15.11 18.054l-.69 3.733.865 4.465.19-5.885-.365-2.313zM20.422 18.054l-.349 2.304.174 5.894.866-4.465-.69-3.733z" />
+          <path fill="#F6851B" d="M21.112 21.787l-.866 4.465.624.433 3.857-3.009.125-3.191-3.74 1.302zM10.723 20.694l.108 3.191 3.857 3.009.624-.433-.866-4.465-3.723-1.302z" />
+          <path fill="#C0AD9E" d="M21.187 30.826l.042-1.227-.341-.283H14.73l-.324.283.025 1.227-4.148-1.954 1.451 1.186 2.94 2.035h6.09l2.957-2.035 1.434-1.186-4.132 1.954z" />
+          <path fill="#161616" d="M20.942 26.696l-.624-.433h-3.616l-.624.433-.341 2.903.324-.283h6.158l.341.283-.618-2.903z" />
+          <path fill="#763D16" d="M33.517 11.353l1.109-5.36L32.958 1l-12.016 8.902 4.623 3.91 6.531 1.903 1.442-1.686-.624-.45 1-9.16-1-7.9.824.633z" />
+          <path fill="#763D16" d="M.996 6.003l1.125 5.35.715-.533-1-.76 1-9.16-.64.45 1.426 1.686 6.531-1.903 4.623-3.91L2.663 1 .996 6.003z" />
+          <path fill="#F6851B" d="M32.096 15.765l-6.531-1.903 2.075 3.143-3.18 6.165 4.197-.05h6.13l-2.691-7.355zM9.856 13.862l-6.531 1.903-2.675 7.355h6.114l4.181.05-3.162-6.165 2.073-3.143zM20.422 18.054l.416-7.192 1.91-5.152h-8.479l1.893 5.152.432 7.192.167 2.323.017 5.877h3.616l.017-5.877.011-2.323z" />
+        </svg>
+      ),
+      bg: "bg-orange-500/10",
+    },
+  ];
+
+  return (
+    <div className="relative flex flex-col items-center justify-center p-8 gap-8 h-full overflow-hidden">
+      {/* Integration cards */}
+      <div className="flex items-center justify-center gap-6">
+        {integrations.map((item, idx) => (
+          <motion.div
+            key={item.name}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.15, duration: 0.5 }}
+            whileHover={{ scale: 1.1, y: -5 }}
+            className={`w-20 h-20 rounded-2xl ${item.bg} border border-neutral-700 flex items-center justify-center shadow-lg hover:shadow-xl transition-all cursor-pointer`}
+          >
+            {item.icon}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Connection lines */}
+      <div className="flex items-center gap-4">
+        <div className="w-20 h-px bg-gradient-to-r from-transparent via-neutral-600 to-neutral-600" />
+        <div className="px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700">
+          <span className="text-xs text-zinc-300 font-medium">One-Click Connect</span>
+        </div>
+        <div className="w-20 h-px bg-gradient-to-l from-transparent via-neutral-600 to-neutral-600" />
+      </div>
+
+      {/* Status indicators */}
+      <div className="flex items-center gap-6">
+        {integrations.map((item) => (
+          <div key={item.name} className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs text-zinc-400">{item.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 
 export const SkeletonFour = () => {
   return (
