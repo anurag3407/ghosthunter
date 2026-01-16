@@ -143,9 +143,9 @@ Generate a fix for EVERY issue listed above. For each issue:
 ---
 
 📋 REQUIRED OUTPUT FORMAT (strict JSON):
-{
+{{
   "fixes": [
-    {
+    {{
       "issueId": "the-issue-id",
       "filePath": "{filePath}",
       "startLine": 42,
@@ -155,10 +155,10 @@ Generate a fix for EVERY issue listed above. For each issue:
       "explanation": "what you fixed and why",
       "confidence": "high",
       "canAutoApply": true
-    }
+    }}
   ],
   "unfixableIssues": []
-}
+}}
 
 ⚠️ REMEMBER: unfixableIssues MUST be empty! You CAN fix everything!`;
 
@@ -360,15 +360,26 @@ async function generateFixesInternal(
         2
     );
 
+    // IMPORTANT: Escape curly braces for LangChain PromptTemplate
+    // LangChain uses {variable} syntax, so literal { and } must be escaped as {{ and }}
+    const escapedFileContent = numberedFileContent.replace(/\{/g, '{{').replace(/\}/g, '}}');
+    const escapedIssuesJson = issuesJson.replace(/\{/g, '{{').replace(/\}/g, '}}');
+
+    console.log('[FixGenerator] DEBUG: Escaping curly braces in content');
+    console.log('[FixGenerator] DEBUG: File content length before:', numberedFileContent.length, 'after:', escapedFileContent.length);
+    console.log('[FixGenerator] DEBUG: First 100 chars of escaped content:', escapedFileContent.substring(0, 100));
+
     // Use appropriate prompt based on attempt
     const promptTemplate = attempt === 1 ? SUPER_FIX_PROMPT : RETRY_FIX_PROMPT;
     const prompt = PromptTemplate.fromTemplate(promptTemplate);
+    console.log('[FixGenerator] DEBUG: About to call prompt.format()');
     const formattedPrompt = await prompt.format({
         filePath: input.filePath,
         language: input.language,
-        numberedFileContent,
-        issuesJson,
+        numberedFileContent: escapedFileContent,
+        issuesJson: escapedIssuesJson,
     });
+    console.log('[FixGenerator] DEBUG: prompt.format() succeeded');
 
     try {
         const result = await structuredModel.invoke(formattedPrompt);

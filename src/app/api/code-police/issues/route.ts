@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Project not found" }, { status: 404 });
         }
         const project = projectDoc.data();
+        console.log(`[Issues API] Project data:`, JSON.stringify(project, null, 2));
 
         // Get analysis run
         const runDoc = await adminDb.collection("analysis_runs").doc(runId).get();
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Analysis run not found" }, { status: 404 });
         }
         const run = runDoc.data();
+        console.log(`[Issues API] Analysis run data:`, JSON.stringify(run, null, 2));
 
         // Get GitHub token
         let githubToken: string | null = null;
@@ -155,6 +157,8 @@ export async function POST(request: NextRequest) {
         const commitSha = run?.commitSha;
         const branch = run?.branch || "main";
 
+        console.log(`[Issues API] Project info - Owner: ${owner}, Repo: ${repo}, CommitSha: ${commitSha}, Branch: ${branch}`);
+
         if (!owner || !repo || !commitSha) {
             return NextResponse.json({ error: "Missing repository information" }, { status: 400 });
         }
@@ -167,17 +171,25 @@ export async function POST(request: NextRequest) {
             issuesByFile.set(issue.filePath, existing);
         }
 
+        console.log(`[Issues API] Processing ${issuesByFile.size} unique files`);
+
         // Generate fixes for each file
         const allFixes: Fix[] = [];
         const fileChanges = new Map<string, string>();
         const errors: string[] = [];
+        const failedFiles: string[] = [];
+        const successfulFiles: string[] = [];
 
         for (const [filePath, fileIssues] of issuesByFile.entries()) {
-            console.log(`[Issues API] Generating fixes for ${filePath} (${fileIssues.length} issues)`);
+            console.log(`[Issues API] ----------------------------------------`);
+            console.log(`[Issues API] Processing: ${filePath} (${fileIssues.length} issues)`);
 
             try {
-                const fileContent = await fetchFileContent(githubToken, owner, repo, filePath, commitSha);
+                // Use branch as fallback if commitSha fails (e.g., if commitSha is "latest" or invalid)
+                const fileContent = await fetchFileContent(githubToken, owner, repo, filePath, commitSha, branch);
                 const language = detectLanguage(filePath);
+
+                console.log(`[Issues API] ✅ Fetched ${filePath} (${fileContent.length} bytes, language: ${language})`);
 
                 const fixResult = await generateFixes({
                     fileContent,
@@ -188,23 +200,31 @@ export async function POST(request: NextRequest) {
 
                 allFixes.push(...fixResult.fixes);
 
-                // Apply ALL fixes - the super generator ensures they're all safe to apply
-                console.log(`[Issues API] Applying ${fixResult.fixes.length} fixes for ${filePath}`);
+                console.log(`[Issues API] Generated ${fixResult.fixes.length} fixes for ${filePath}`);
                 if (fixResult.fixes.length > 0) {
                     const newContent = applyMultipleFixes(fileContent, fixResult.fixes);
                     if (newContent !== fileContent) {
                         fileChanges.set(filePath, newContent);
-                        console.log(`[Issues API] ✅ File changes saved for ${filePath}`);
+                        successfulFiles.push(filePath);
+                        console.log(`[Issues API] ✅ File changes prepared for ${filePath}`);
                     } else {
                         console.warn(`[Issues API] ⚠️ No changes after applying fixes to ${filePath}`);
-                        errors.push(`${filePath}: Fixes generated but could not be applied to file`);
+                        errors.push(`${filePath}: Fixes generated but content unchanged`);
                     }
+                } else {
+                    errors.push(`${filePath}: No fixes could be generated for the issues`);
                 }
             } catch (e) {
-                console.warn(`[Issues API] Failed to process ${filePath}:`, e);
-                errors.push(`${filePath}: ${e instanceof Error ? e.message : 'Failed to fetch file'}`);
+                const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+                console.error(`[Issues API] ❌ Failed to process ${filePath}:`, errorMsg);
+                errors.push(`${filePath}: ${errorMsg}`);
+                failedFiles.push(filePath);
+                // Continue processing other files - don't stop on one failure
             }
         }
+
+        console.log(`[Issues API] ----------------------------------------`);
+        console.log(`[Issues API] Summary: ${successfulFiles.length} files ready, ${failedFiles.length} failed, ${allFixes.length} total fixes`);
 
         // Create PR if we have changes
         if (fileChanges.size > 0) {
@@ -243,9 +263,23 @@ export async function POST(request: NextRequest) {
         } else {
             // No file changes - provide detailed error info
             console.log(`[Issues API] No changes applied. Fixes generated: ${allFixes.length}`);
+            console.log(`[Issues API] Failed files: ${failedFiles.join(', ') || 'none'}`);
+            console.log(`[Issues API] All errors:`, errors);
 
             let message = "No fixes could be auto-applied. ";
-            if (allFixes.length === 0) {
+
+            if (failedFiles.length > 0 && failedFiles.length === issuesByFile.size) {
+                // All files failed to fetch
+                message = `Failed to fetch all ${failedFiles.length} file(s) from GitHub. `;
+                message += "This usually means the files don't exist at the specified commit, or there's a path mismatch. ";
+                message += "Check that the files exist in the repository and the paths are correct.";
+            } else if (failedFiles.length > 0) {
+                // Some files failed
+                message = `${failedFiles.length} of ${issuesByFile.size} files could not be fetched. `;
+                if (allFixes.length === 0) {
+                    message += "No fixes could be generated for the remaining files.";
+                }
+            } else if (allFixes.length === 0) {
                 message += "The AI could not generate any fixes for the identified issues. This might be because the issues require complex architectural changes.";
             } else {
                 message += "Fixes were generated but could not be matched to the source code. This may happen if the code has changed since the analysis.";
@@ -255,7 +289,16 @@ export async function POST(request: NextRequest) {
                 success: false,
                 message,
                 fixesGenerated: allFixes.length,
-                errors: errors.slice(0, 5), // Include first 5 errors
+                filesProcessed: issuesByFile.size,
+                filesFailed: failedFiles.length,
+                errors: errors.slice(0, 10), // Include first 10 errors for debugging
+                debugInfo: {
+                    owner,
+                    repo,
+                    commitSha,
+                    branch,
+                    failedFiles,
+                }
             });
         }
     } catch (error) {

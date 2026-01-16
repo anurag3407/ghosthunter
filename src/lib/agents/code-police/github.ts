@@ -34,28 +34,84 @@ export async function fetchUserRepos(accessToken: string): Promise<GitHubRepo[]>
 
 /**
  * Fetch file content from a repository
+ * @param accessToken - GitHub OAuth token
+ * @param owner - Repository owner
+ * @param repo - Repository name
+ * @param path - File path within the repository
+ * @param ref - Optional commit SHA or branch name (defaults to HEAD)
+ * @param fallbackBranch - Optional branch to try if ref fails
  */
 export async function fetchFileContent(
   accessToken: string,
   owner: string,
   repo: string,
   path: string,
-  ref?: string
+  ref?: string,
+  fallbackBranch?: string
 ): Promise<string> {
-  const url = new URL(`${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}`);
-  if (ref) {
-    url.searchParams.set("ref", ref);
+  // Remove leading slashes and handle Windows-style paths
+  const cleanPath = path.replace(/^\/+/, "").replace(/\\/g, "/");
+
+  // Skip "latest" as a ref - it's not a valid Git ref
+  // Use fallbackBranch if ref is invalid, otherwise try without ref (uses default branch)
+  let effectiveRef: string | undefined;
+  if (ref && ref !== "latest" && ref.length > 0) {
+    effectiveRef = ref;
+  } else if (fallbackBranch) {
+    // If ref is invalid, use the fallback branch as the primary
+    effectiveRef = fallbackBranch;
+    console.log("[GitHub] Ref is invalid ('latest' or empty), using branch: " + fallbackBranch);
   }
+
+  const url = new URL(GITHUB_API_BASE + "/repos/" + owner + "/" + repo + "/contents/" + cleanPath);
+  if (effectiveRef) {
+    url.searchParams.set("ref", effectiveRef);
+  }
+
+  console.log("[GitHub] Fetching file: " + url.toString());
 
   const response = await fetch(url.toString(), {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: "Bearer " + accessToken,
       Accept: "application/vnd.github.v3.raw",
     },
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch file: ${response.statusText}`);
+    // If this failed and we were using something other than the fallback, try the fallback
+    if (response.status === 404 && fallbackBranch && effectiveRef !== fallbackBranch) {
+      console.log("[GitHub] File not found at ref " + (effectiveRef || "HEAD") + ", trying fallback branch: " + fallbackBranch);
+      const fallbackUrl = new URL(GITHUB_API_BASE + "/repos/" + owner + "/" + repo + "/contents/" + cleanPath);
+      fallbackUrl.searchParams.set("ref", fallbackBranch);
+
+      const fallbackResponse = await fetch(fallbackUrl.toString(), {
+        headers: {
+          Authorization: "Bearer " + accessToken,
+          Accept: "application/vnd.github.v3.raw",
+        },
+      });
+
+      if (fallbackResponse.ok) {
+        console.log("[GitHub] Found file using fallback branch: " + fallbackBranch);
+        return fallbackResponse.text();
+      }
+    }
+
+    let errorBody = "";
+    try {
+      errorBody = await response.text();
+    } catch {
+      // Ignore error reading body
+    }
+
+    const errorDetails = "Failed to fetch file: " + response.status + " " + response.statusText;
+    console.error("[GitHub] " + errorDetails);
+    console.error("[GitHub] Request URL: " + url.toString());
+    console.error("[GitHub] Owner: " + owner + ", Repo: " + repo + ", Path: " + cleanPath + ", Ref: " + (effectiveRef || "HEAD"));
+    if (errorBody) {
+      console.error("[GitHub] Response body: " + errorBody.substring(0, 500));
+    }
+    throw new Error(errorDetails + ": " + cleanPath);
   }
 
   return response.text();
@@ -288,13 +344,13 @@ export async function getDependentFiles(
       }
 
       const data = await response.json();
-      
+
       for (const item of data.items || []) {
         if (item.path === targetFilePath) continue; // Skip self
-        
+
         const textMatches = item.text_matches || [];
         const snippet = textMatches.map((tm: { fragment: string }) => tm.fragment).join('\n...\n');
-        
+
         dependentFiles.push({
           path: item.path,
           snippet: snippet || `Imports ${fileName}`,
