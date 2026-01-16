@@ -157,6 +157,177 @@ export async function fetchCommit(
 }
 
 /**
+ * Fetch commit diff/comparison between two commits
+ * Used to show what changed in a commit for email and analysis
+ */
+export async function fetchCommitDiff(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  baseSha: string,
+  headSha: string
+): Promise<{
+  ahead_by: number;
+  behind_by: number;
+  total_commits: number;
+  files: Array<{
+    filename: string;
+    status: string;
+    additions: number;
+    deletions: number;
+    changes: number;
+    patch?: string;
+  }>;
+  commits: Array<{
+    sha: string;
+    commit: { message: string; author: { name: string; email: string } };
+  }>;
+}> {
+  const response = await fetch(
+    `${GITHUB_API_BASE}/repos/${owner}/${repo}/compare/${baseSha}...${headSha}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch commit diff: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch repository file tree
+ * Used for full repository analysis
+ */
+export async function fetchRepoTree(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  branch: string = "main"
+): Promise<{
+  sha: string;
+  tree: Array<{
+    path: string;
+    type: "blob" | "tree";
+    size?: number;
+    sha: string;
+  }>;
+  truncated: boolean;
+}> {
+  const response = await fetch(
+    `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch repo tree: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Fetch repository statistics for analytics
+ */
+export async function fetchRepoStats(
+  accessToken: string,
+  owner: string,
+  repo: string
+): Promise<{
+  contributorStats: Array<{
+    author: { login: string; avatar_url: string };
+    total: number;
+    weeks: Array<{ w: number; a: number; d: number; c: number }>;
+  }>;
+  codeFrequency: Array<[number, number, number]>; // [timestamp, additions, deletions]
+  commitActivity: Array<{ days: number[]; total: number; week: number }>;
+}> {
+  // Fetch multiple stats in parallel
+  const [contributorRes, codeFreqRes, commitActivityRes] = await Promise.all([
+    fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/stats/contributors`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    }),
+    fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/stats/code_frequency`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    }),
+    fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/stats/commit_activity`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    }),
+  ]);
+
+  // GitHub returns 202 if stats are being computed - retry in that case
+  const contributorStats = contributorRes.ok ? await contributorRes.json() : [];
+  const codeFrequency = codeFreqRes.ok ? await codeFreqRes.json() : [];
+  const commitActivity = commitActivityRes.ok ? await commitActivityRes.json() : [];
+
+  return {
+    contributorStats: Array.isArray(contributorStats) ? contributorStats : [],
+    codeFrequency: Array.isArray(codeFrequency) ? codeFrequency : [],
+    commitActivity: Array.isArray(commitActivity) ? commitActivity : [],
+  };
+}
+
+/**
+ * Generate a human-readable summary of what changed in a commit
+ */
+export function generateDiffSummary(
+  files: Array<{ filename: string; additions: number; deletions: number; status: string }>
+): {
+  totalFiles: number;
+  totalAdditions: number;
+  totalDeletions: number;
+  summary: string;
+  filesByType: Record<string, number>;
+} {
+  const totalFiles = files.length;
+  const totalAdditions = files.reduce((sum, f) => sum + f.additions, 0);
+  const totalDeletions = files.reduce((sum, f) => sum + f.deletions, 0);
+
+  // Group files by extension
+  const filesByType: Record<string, number> = {};
+  for (const file of files) {
+    const ext = file.filename.split(".").pop()?.toLowerCase() || "other";
+    filesByType[ext] = (filesByType[ext] || 0) + 1;
+  }
+
+  // Generate human-readable summary
+  const fileTypeSummary = Object.entries(filesByType)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([ext, count]) => `${count} ${ext} file${count > 1 ? "s" : ""}`)
+    .join(", ");
+
+  const summary = `${totalFiles} file${totalFiles !== 1 ? "s" : ""} changed: +${totalAdditions} -${totalDeletions} lines. (${fileTypeSummary})`;
+
+  return {
+    totalFiles,
+    totalAdditions,
+    totalDeletions,
+    summary,
+    filesByType,
+  };
+}
+
+/**
  * Create a webhook for a repository
  */
 export async function createWebhook(

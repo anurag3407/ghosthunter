@@ -8,7 +8,7 @@ import {
 } from "@/lib/agents/code-police/analyzer";
 import { sendAnalysisReport } from "@/lib/agents/code-police/email";
 import { generateAndCreateFixPR } from "@/lib/agents/code-police/auto-fix";
-import { fetchCommit, fetchFileContent, postPRComment, formatPRComment, getDependentFiles } from "@/lib/agents/code-police/github";
+import { fetchCommit, fetchFileContent, postPRComment, formatPRComment, getDependentFiles, generateDiffSummary } from "@/lib/agents/code-police/github";
 import type { CodeIssue, IssueSeverity, ProjectStatus } from "@/types";
 
 /**
@@ -439,6 +439,17 @@ async function handlePushEvent(
       const userEmail = userData.data()?.email;
       const recipients = [userEmail, ...(notificationPrefs.additionalEmails || [])].filter(Boolean);
 
+      // Generate diff summary for email
+      const diffSummary = generateDiffSummary(commitFiles.map(f => ({
+        filename: f.filename,
+        additions: f.additions,
+        deletions: f.deletions,
+        status: f.status
+      })));
+
+      // Get dashboard URL from env or construct default
+      const dashboardUrl = process.env.NEXT_PUBLIC_APP_URL || "https://ghostfounder.com";
+
       for (const email of recipients) {
         await sendAnalysisReport({
           to: email,
@@ -460,11 +471,17 @@ async function handlePushEvent(
           summary,
           repoName: `${owner}/${repo}`,
           commitUrl: `https://github.com/${owner}/${repo}/commit/${commitSha}`,
+          // Enhanced email fields
+          projectId: project.id,
+          commitMessage: commit.commit.message,
+          diffSummary,
+          dashboardUrl,
         });
       }
 
       await analysisRef.update({ emailStatus: "sent" });
     }
+
 
     // Auto-fix: Generate fixes and create PR if enabled
     if ((project.autoFixEnabled as boolean | undefined) && fullIssues.length > 0) {

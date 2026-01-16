@@ -34,6 +34,17 @@ export async function sendAnalysisReport(input: {
   summary: string;
   repoName: string;
   commitUrl: string;
+  // New optional fields for enhanced emails
+  projectId?: string;
+  commitMessage?: string;
+  diffSummary?: {
+    totalFiles: number;
+    totalAdditions: number;
+    totalDeletions: number;
+    summary: string;
+    filesByType: Record<string, number>;
+  };
+  dashboardUrl?: string;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const resend = getResendClient();
   const fromAddress = process.env.EMAIL_FROM_ADDRESS || "noreply@ghostfounder.com";
@@ -55,12 +66,13 @@ export async function sendAnalysisReport(input: {
     return { success: true, messageId: result.data?.id };
   } catch (error) {
     console.error("Failed to send email:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown error" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
     };
   }
 }
+
 
 /**
  * Generate email subject based on analysis results
@@ -90,9 +102,21 @@ function generateReportHtml(input: {
   summary: string;
   repoName: string;
   commitUrl: string;
+  // New optional fields for enhanced emails
+  projectId?: string;
+  commitMessage?: string;
+  diffSummary?: {
+    totalFiles: number;
+    totalAdditions: number;
+    totalDeletions: number;
+    summary: string;
+    filesByType: Record<string, number>;
+  };
+  dashboardUrl?: string;
 }): string {
   const { run, issues, summary, repoName, commitUrl } = input;
   const commitShort = run.commitSha.slice(0, 7);
+
 
   const severityColors: Record<IssueSeverity, string> = {
     critical: "#dc2626",
@@ -115,13 +139,13 @@ function generateReportHtml(input: {
    */
   const formatCodeSnippet = (snippet: string | undefined): string => {
     if (!snippet) return '';
-    
+
     // Escape HTML entities
     const escaped = snippet
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-    
+
     return `
       <div style="margin-top: 12px; border-radius: 8px; overflow: hidden; border: 1px solid #3c3c3c;">
         <div style="background-color: #252526; padding: 8px 12px; border-bottom: 1px solid #3c3c3c;">
@@ -167,6 +191,57 @@ function generateReportHtml(input: {
     )
     .join("");
 
+  // Generate diff summary section if available
+  const diffSection = input.diffSummary ? `
+    <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+      <h2 style="color: #fafafa; font-size: 18px; margin: 0 0 16px 0;">
+        📊 What Changed
+      </h2>
+      <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+        <div style="background-color: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.2); border-radius: 6px; padding: 8px 16px;">
+          <span style="color: #4ade80; font-weight: 600;">+${input.diffSummary.totalAdditions}</span>
+          <span style="color: #71717a; font-size: 12px;"> additions</span>
+        </div>
+        <div style="background-color: rgba(248, 113, 113, 0.1); border: 1px solid rgba(248, 113, 113, 0.2); border-radius: 6px; padding: 8px 16px;">
+          <span style="color: #f87171; font-weight: 600;">-${input.diffSummary.totalDeletions}</span>
+          <span style="color: #71717a; font-size: 12px;"> deletions</span>
+        </div>
+        <div style="background-color: rgba(147, 51, 234, 0.1); border: 1px solid rgba(147, 51, 234, 0.2); border-radius: 6px; padding: 8px 16px;">
+          <span style="color: #a78bfa; font-weight: 600;">${input.diffSummary.totalFiles}</span>
+          <span style="color: #71717a; font-size: 12px;"> files</span>
+        </div>
+      </div>
+      <p style="color: #a1a1aa; font-size: 14px; margin: 0;">
+        ${input.diffSummary.summary}
+      </p>
+    </div>
+  ` : '';
+
+  // Generate commit message section if available
+  const commitMessageSection = input.commitMessage ? `
+    <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+      <h2 style="color: #fafafa; font-size: 18px; margin: 0 0 12px 0;">
+        💬 Commit Message
+      </h2>
+      <p style="color: #a1a1aa; line-height: 1.6; margin: 0; font-style: italic;">
+        "${input.commitMessage.split('\n')[0]}"
+      </p>
+      ${input.commitMessage.includes('\n') ? `
+        <p style="color: #71717a; font-size: 13px; margin: 8px 0 0 0;">
+          ${input.commitMessage.split('\n').slice(1).join('<br>')}
+        </p>
+      ` : ''}
+    </div>
+  ` : '';
+
+  // Generate Fix with PR button if we have issues and project info
+  const fixPrButton = (issues.length > 0 && input.projectId && input.dashboardUrl) ? `
+    <a href="${input.dashboardUrl}/dashboard/code-police/${input.projectId}?action=fix&runId=${run.id}" 
+       style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; margin-right: 12px;">
+      🔧 Fix with PR
+    </a>
+  ` : '';
+
   return `
     <!DOCTYPE html>
     <html>
@@ -186,21 +261,27 @@ function generateReportHtml(input: {
             </p>
           </div>
 
+          <!-- Commit Message Section -->
+          ${commitMessageSection}
+
+          <!-- Diff Summary Section -->
+          ${diffSection}
+
           <!-- Summary Card -->
           <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
             <h2 style="color: #fafafa; font-size: 18px; margin: 0 0 16px 0;">
-              Summary
+              📋 Analysis Summary
             </h2>
             <p style="color: #a1a1aa; line-height: 1.6; margin: 0;">
-              ${summary.replace(/\n/g, "<br>")}
+              ${summary.replace(/\\n/g, "<br>")}
             </p>
           </div>
 
           <!-- Stats Grid -->
           <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px;">
             ${Object.entries(run.issueCounts)
-              .map(
-                ([severity, count]) => `
+      .map(
+        ([severity, count]) => `
                   <div style="background-color: #18181b; border: 1px solid #27272a; border-radius: 8px; padding: 12px; text-align: center;">
                     <div style="font-size: 20px; font-weight: bold; color: ${severityColors[severity as IssueSeverity]};">
                       ${count}
@@ -210,8 +291,8 @@ function generateReportHtml(input: {
                     </div>
                   </div>
                 `
-              )
-              .join("")}
+      )
+      .join("")}
           </div>
 
           <!-- Issues List -->
@@ -235,8 +316,9 @@ function generateReportHtml(input: {
             </div>
           `}
 
-          <!-- CTA Button -->
+          <!-- CTA Buttons -->
           <div style="text-align: center; margin-bottom: 32px;">
+            ${fixPrButton}
             <a href="${commitUrl}" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
               View Commit on GitHub
             </a>
@@ -256,3 +338,4 @@ function generateReportHtml(input: {
     </html>
   `;
 }
+
