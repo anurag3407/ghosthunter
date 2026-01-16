@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useAuth, UserButton } from '@clerk/nextjs';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,13 @@ export default function Header() {
       >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/ghostfounder.png"
+            alt="GhostFounder Logo"
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
           <span className="text-base font-semibold text-white">
             GhostFounder
           </span>
@@ -92,7 +100,7 @@ export default function Header() {
               >
                 Dashboard
               </Link>
-              <UserButton 
+              <UserButton
                 afterSignOutUrl="/"
                 appearance={{
                   elements: {

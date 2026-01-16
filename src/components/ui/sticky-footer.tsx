@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { motion, useReducedMotion } from 'motion/react';
 import {
@@ -45,13 +46,37 @@ export function StickyFooter({ className, ...props }: StickyFooterProps) {
                             <div className="bg-[radial-gradient(50%_50%_at_50%_50%,var(--tw-gradient-from)_0,transparent_100%)] from-primary/10 absolute top-0 left-0 h-320 w-60 [translate:5%_-50%] -rotate-45 rounded-full" />
                             <div className="bg-[radial-gradient(50%_50%_at_50%_50%,var(--tw-gradient-from)_0,transparent_100%)] from-primary/10 absolute top-0 left-0 h-320 w-60 -translate-y-87.5 -rotate-45 rounded-full" />
                         </div>
-                        <div className="mt-10 flex flex-col gap-8 md:flex-row xl:mt-0 relative z-10">
+
+                        {/* Upper Part - GHOSTFOUNDER Text Effect with Logo */}
+                        <div className="w-full flex flex-col items-center justify-center relative z-10 pt-4">
+                            <TextHoverEffect
+                                text="GHOSTFOUNDER"
+                                containerHeight="10rem"
+                                viewBox="0 0 500 100"
+                            />
+                            {/* <Image
+                                src="/ghostfounder.png"
+                                alt="GhostFounder Logo"
+                                width={80}
+                                height={80}
+                                className="rounded-2xl shadow-2xl shadow-violet-500/20 -mt-4"
+                            /> */}
+                        </div>
+
+                        {/* Lower Part - All Content: Logo, Description, Links */}
+                        <div className="flex flex-col gap-8 md:flex-row relative z-10">
                             <AnimatedContainer className="w-full max-w-sm min-w-2xs space-y-4">
                                 <div className="flex items-center gap-2">
-                                    <div className="size-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">G</div>
-                                    <span className="text-xl font-bold">GhostHunter</span>
+                                    <Image
+                                        src="/ghostfounder.png"
+                                        alt="GhostFounder Logo"
+                                        width={160}
+                                        height={160}
+                                        className="rounded-lg"
+                                    />
+                                    <span className="text-xl font-bold">GhostFounder</span>
                                 </div>
-                                <p className="text-muted-foreground mt-8 text-sm md:mt-0">
+                                <p className="text-muted-foreground text-sm">
                                     Building the future of digital experiences, one pixel at a time.
                                     AI-powered platform for startups.
                                 </p>
@@ -90,15 +115,10 @@ export function StickyFooter({ className, ...props }: StickyFooterProps) {
                                 </AnimatedContainer>
                             ))}
                         </div>
-                        <div className="w-full flex items-center justify-center -mb-20 pointer-events-none opacity-50 relative z-0">
-                            <TextHoverEffect
-                                text="GHOSTHUNTER"
-                                containerHeight="10rem"
-                                viewBox="0 0 450 100"
-                            />
-                        </div>
+
+                        {/* Copyright Footer */}
                         <div className="text-muted-foreground flex flex-col items-center justify-between gap-2 border-t border-border pt-4 text-sm md:flex-row relative z-10">
-                            <p>© {new Date().getFullYear()} GhostHunter. All rights reserved.</p>
+                            <p>© {new Date().getFullYear()} GhostFounder. All rights reserved.</p>
                             <p>Designed with ❤️</p>
                         </div>
                     </div>

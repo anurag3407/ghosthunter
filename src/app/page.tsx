@@ -1,6 +1,7 @@
 "use client";
 
 import nextDynamic from 'next/dynamic';
+import Image from 'next/image';
 import { Suspense } from 'react';
 import { Header, HeroSection, HeroHighlightSection, StickyScrollRevealDemo } from '@/components/layout';
 import { StickyFooter } from "@/components/ui/sticky-footer";
@@ -83,7 +84,7 @@ export default function LandingPage() {
       </Suspense>
 
       {/* GHOSTFOUNDER Text Effect */}
-      <section className="py-8 flex items-center justify-center">
+      <section className="py-8 flex flex-col items-center justify-center gap-6">
         <Suspense fallback={<SectionSkeleton height="h-[20rem]" />}>
           <TextHoverEffect
             text="GHOSTFOUNDER"
@@ -91,6 +92,13 @@ export default function LandingPage() {
             viewBox="0 0 500 100"
           />
         </Suspense>
+        <Image
+          src="/ghostfounder.png"
+          alt="GhostFounder Logo"
+          width={360}
+          height={360}
+          className="rounded-2xl shadow-2xl shadow-violet-500/20"
+        />
       </section>
 
       {/* Animated Testimonials Section */}

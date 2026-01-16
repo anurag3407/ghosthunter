@@ -8,6 +8,7 @@
  */
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Bell } from "lucide-react";
@@ -124,9 +125,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
         <div className="h-14 flex items-center justify-between px-6 bg-neutral-950/90 backdrop-blur-xl border-b border-white/5">
           <a href="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/10 flex items-center justify-center border border-white/10 group-hover:shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-shadow duration-300">
-              <IconSparkles className="w-4 h-4 text-violet-400" />
-            </div>
+            <Image
+              src="/ghostfounder.png"
+              alt="GhostFounder Logo"
+              width={32}
+              height={32}
+              className="rounded-lg group-hover:shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-shadow duration-300"
+            />
             <span className="text-base font-semibold bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">
               GhostFounder
             </span>

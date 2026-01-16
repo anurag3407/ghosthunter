@@ -1,10 +1,10 @@
+import Image from 'next/image';
 import {
     GitHubLogoIcon,
     InstagramLogoIcon,
     LinkedInLogoIcon,
     TwitterLogoIcon,
     VideoIcon,
-    DashboardIcon,
 } from '@radix-ui/react-icons';
 
 export function MinimalFooter() {
@@ -84,8 +84,15 @@ export function MinimalFooter() {
                 <div className="bg-border absolute inset-x-0 h-px w-full" />
                 <div className="grid max-w-4xl grid-cols-6 gap-6 p-4">
                     <div className="col-span-6 flex flex-col gap-5 md:col-span-4">
-                        <a href="#" className="w-max opacity-25">
-                            <DashboardIcon className="size-8" />
+                        <a href="#" className="flex items-center gap-2">
+                            <Image
+                                src="/ghostfounder.png"
+                                alt="GhostFounder Logo"
+                                width={40}
+                                height={40}
+                                className="rounded-lg"
+                            />
+                            <span className="text-lg font-semibold text-foreground">GhostFounder</span>
                         </a>
                         <p className="text-muted-foreground max-w-sm font-mono text-sm text-balance">
                             A comprehensive financial technology platform.
