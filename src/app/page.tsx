@@ -97,8 +97,24 @@ export default function LandingPage() {
           alt="GhostFounder Logo"
           width={360}
           height={360}
-          className="rounded-2xl shadow-2xl shadow-violet-500/20"
+          className="rounded-2xl shadow-2xl shadow-violet-500/20 animate-float -mt-16"
+          style={{
+            animation: 'float 3s ease-in-out infinite',
+          }}
         />
+        <style jsx global>{`
+          @keyframes float {
+            0%, 100% {
+              transform: translateY(0px);
+            }
+            50% {
+              transform: translateY(-35px);
+            }
+          }
+          .animate-float {
+            animation: float 3s ease-in-out infinite;
+          }
+        `}</style>
       </section>
 
       {/* Animated Testimonials Section */}
