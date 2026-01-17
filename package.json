@@ -92,7 +92,7 @@
     "@types/canvas-confetti": "^1.9.0",
     "@types/crypto-js": "^4.2.2",
     "@types/node": "^20",
-    "@types/nodemailer": "^7.0.4",
+    "@types/nodemailer": "^7.0.5",
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",

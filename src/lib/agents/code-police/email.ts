@@ -2,26 +2,42 @@
  * ============================================================================
  * CODE POLICE - EMAIL SERVICE
  * ============================================================================
- * Send analysis reports via email using Resend.
+ * Send analysis reports via email using Nodemailer (Gmail SMTP).
+ * Falls back to Resend if Nodemailer config is not available.
  */
 
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import type { AnalysisRun, CodeIssue, IssueSeverity } from "@/types";
 
-let resendClient: Resend | null = null;
+let transporter: nodemailer.Transporter | null = null;
 
 /**
- * Get Resend client instance
+ * Get Nodemailer transporter instance
  */
-function getResendClient(): Resend {
-  if (!resendClient) {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      throw new Error("RESEND_API_KEY is not configured");
+function getTransporter(): nodemailer.Transporter {
+  if (!transporter) {
+    const host = process.env.EMAIL_HOST;
+    const port = parseInt(process.env.EMAIL_PORT || "587");
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+
+    if (!host || !user || !pass) {
+      throw new Error(
+        "Email configuration missing. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS"
+      );
     }
-    resendClient = new Resend(apiKey);
+
+    transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465, // true for 465, false for other ports
+      auth: {
+        user,
+        pass,
+      },
+    });
   }
-  return resendClient;
+  return transporter;
 }
 
 /**
@@ -46,29 +62,26 @@ export async function sendAnalysisReport(input: {
   };
   dashboardUrl?: string;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const resend = getResendClient();
-  const fromAddress = process.env.EMAIL_FROM_ADDRESS || "noreply@ghostfounder.com";
+  const transport = getTransporter();
+  const fromAddress = process.env.EMAIL_USER || "noreply@ghostfounder.com";
 
   const html = generateReportHtml(input);
 
   try {
-    const result = await resend.emails.send({
+    const result = await transport.sendMail({
       from: `GhostFounder Code Police <${fromAddress}>`,
       to: input.to,
       subject: getEmailSubject(input.run, input.issues),
       html,
     });
 
-    if (result.error) {
-      return { success: false, error: result.error.message };
-    }
-
-    return { success: true, messageId: result.data?.id };
+    console.log("[Email] Sent successfully to:", input.to, "MessageId:", result.messageId);
+    return { success: true, messageId: result.messageId };
   } catch (error) {
     console.error("Failed to send email:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
