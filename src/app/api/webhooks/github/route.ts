@@ -397,16 +397,35 @@ async function handlePushEvent(
       isMuted: false,
     }));
 
+    // Helper function to remove undefined values from objects (Firestore doesn't accept undefined)
+    const sanitizeForFirestore = (obj: Record<string, unknown>): Record<string, unknown> => {
+      const cleaned: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(obj)) {
+        if (value !== undefined) {
+          if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+            cleaned[key] = sanitizeForFirestore(value as Record<string, unknown>);
+          } else {
+            cleaned[key] = value;
+          }
+        }
+      }
+      return cleaned;
+    };
+
     // Store in SUBCOLLECTION: analysis_runs/{runId}/issues
     if (fullIssues.length > 0) {
       const issuesBatch = adminDb.batch();
       for (const issue of fullIssues) {
         // FIX: Store in subcollection, not top-level collection
         const issueRef = analysisRef.collection("issues").doc(issue.id);
-        issuesBatch.set(issueRef, {
+        // Sanitize to remove undefined values
+        const sanitizedIssue = sanitizeForFirestore({
           ...issue,
           createdAt: new Date(),
+          // Ensure optional fields have defaults
+          endLine: issue.endLine ?? issue.line,
         });
+        issuesBatch.set(issueRef, sanitizedIssue);
       }
       await issuesBatch.commit();
       console.log("[Push Event] Stored", fullIssues.length, "issues in subcollection");
