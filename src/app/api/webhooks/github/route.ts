@@ -9,6 +9,7 @@ import {
 import { sendAnalysisReport } from "@/lib/agents/code-police/email";
 import { generateAndCreateFixPR } from "@/lib/agents/code-police/auto-fix";
 import { fetchCommit, fetchFileContent, postPRComment, formatPRComment, getDependentFiles } from "@/lib/agents/code-police/github";
+import { getUserEmail } from "@/lib/utils/clerk";
 import type { CodeIssue, IssueSeverity, ProjectStatus } from "@/types";
 
 /**
@@ -434,10 +435,17 @@ async function handlePushEvent(
     // Send email notification if configured
     const notificationPrefs = project.notificationPrefs as { emailOnPush?: boolean; additionalEmails?: string[] } | undefined;
     if (notificationPrefs?.emailOnPush) {
-      // Fetch user email
-      const userData = await adminDb.collection("users").doc(project.userId).get();
-      const userEmail = userData.data()?.email;
-      const recipients = [userEmail, ...(notificationPrefs.additionalEmails || [])].filter(Boolean);
+      // Get user email from Clerk first (works for Google and GitHub auth)
+      const emailInfo = await getUserEmail(project.userId);
+      let userEmail = emailInfo.email;
+
+      // Fallback: check Firestore for legacy users
+      if (!userEmail) {
+        const userData = await adminDb.collection("users").doc(project.userId).get();
+        userEmail = userData.data()?.email;
+      }
+
+      const recipients = [userEmail, ...(notificationPrefs.additionalEmails || [])].filter((e): e is string => !!e);
 
       for (const email of recipients) {
         await sendAnalysisReport({
