@@ -152,15 +152,24 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Issues API] Generating fixes for ${issues.length} issues`);
 
-        const owner = project?.githubOwner;
-        const repo = project?.githubRepoName;
+        let owner = project?.githubOwner;
+        let repo = project?.githubRepoName;
         const commitSha = run?.commitSha;
         const branch = run?.branch || "main";
+
+        // Fallback: parse from githubFullName if individual fields are missing
+        if ((!owner || !repo) && project?.githubFullName) {
+            const parts = project.githubFullName.split('/');
+            if (parts.length === 2) {
+                owner = parts[0];
+                repo = parts[1];
+            }
+        }
 
         console.log(`[Issues API] Project info - Owner: ${owner}, Repo: ${repo}, CommitSha: ${commitSha}, Branch: ${branch}`);
 
         if (!owner || !repo || !commitSha) {
-            return NextResponse.json({ error: "Missing repository information" }, { status: 400 });
+            return NextResponse.json({ error: "Missing repository information. Please reconnect the repository." }, { status: 400 });
         }
 
         // Group issues by file
