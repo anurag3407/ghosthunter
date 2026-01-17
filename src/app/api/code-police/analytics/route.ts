@@ -22,16 +22,17 @@ import {
 
 interface AnalyticsResponse {
     success: boolean;
-    analytics?: FullAnalytics & { aiInsights: AIInsights };
+    analytics?: FullAnalytics & { aiInsights?: AIInsights };
     error?: string;
     cached?: boolean;
+    aiRequested?: boolean;
 }
 
 // Cache duration: 1 hour for analytics data
 const ANALYTICS_CACHE_DURATION_MS = 60 * 60 * 1000;
 
-// Cache duration: 24 hours for AI insights
-const AI_CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
+// Cache duration: 7 days for AI insights (extended to reduce token usage)
+const AI_CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function GET(request: NextRequest): Promise<NextResponse<AnalyticsResponse>> {
     try {
@@ -44,6 +45,8 @@ export async function GET(request: NextRequest): Promise<NextResponse<AnalyticsR
         const { searchParams } = new URL(request.url);
         const projectId = searchParams.get('projectId');
         const skipCache = searchParams.get('fresh') === 'true';
+        // AI insights are optional to save tokens - only generate when user requests
+        const includeAI = searchParams.get('includeAI') === 'true';
 
         if (!projectId) {
             return NextResponse.json(
@@ -185,20 +188,32 @@ export async function GET(request: NextRequest): Promise<NextResponse<AnalyticsR
         const aiCacheKey = createMetricsCacheKey(metricsSummary);
         const aiCacheRef = adminDb.collection('ai_insights_cache').doc(aiCacheKey);
 
-        let aiInsights: AIInsights;
+        let aiInsights: AIInsights | undefined;
         let aiCached = false;
 
-        const aiCacheDoc = await aiCacheRef.get();
-        if (aiCacheDoc.exists && !skipCache) {
-            const aiCacheData = aiCacheDoc.data()!;
-            const aiCacheAge = Date.now() - (aiCacheData.cachedAt?.toDate?.()?.getTime() || 0);
+        // Only generate AI insights if explicitly requested (saves tokens)
+        if (includeAI) {
+            const aiCacheDoc = await aiCacheRef.get();
+            if (aiCacheDoc.exists && !skipCache) {
+                const aiCacheData = aiCacheDoc.data()!;
+                const aiCacheAge = Date.now() - (aiCacheData.cachedAt?.toDate?.()?.getTime() || 0);
 
-            if (aiCacheAge < AI_CACHE_DURATION_MS) {
-                console.log(`[Analytics] Using cached AI insights`);
-                aiInsights = aiCacheData.insights;
-                aiCached = true;
+                if (aiCacheAge < AI_CACHE_DURATION_MS) {
+                    console.log(`[Analytics] Using cached AI insights (7-day cache)`);
+                    aiInsights = aiCacheData.insights;
+                    aiCached = true;
+                } else {
+                    // Generate fresh AI insights
+                    console.log(`[Analytics] Generating AI insights (token usage: ~400-800 tokens)`);
+                    aiInsights = await generateAIInsights(metricsSummary);
+                    await aiCacheRef.set({
+                        insights: aiInsights,
+                        cachedAt: new Date(),
+                    });
+                }
             } else {
                 // Generate fresh AI insights
+                console.log(`[Analytics] Generating AI insights (token usage: ~400-800 tokens)`);
                 aiInsights = await generateAIInsights(metricsSummary);
                 await aiCacheRef.set({
                     insights: aiInsights,
@@ -206,22 +221,18 @@ export async function GET(request: NextRequest): Promise<NextResponse<AnalyticsR
                 });
             }
         } else {
-            // Generate fresh AI insights
-            console.log(`[Analytics] Generating AI insights (token usage: ~400-800 tokens)`);
-            aiInsights = await generateAIInsights(metricsSummary);
-            await aiCacheRef.set({
-                insights: aiInsights,
-                cachedAt: new Date(),
-            });
+            console.log(`[Analytics] Skipping AI insights (use ?includeAI=true to generate)`);
         }
 
-        // Combine analytics with AI insights
+        // Combine analytics with optional AI insights
         const fullAnalytics = {
             ...analytics,
-            aiInsights: {
-                ...aiInsights,
-                cached: aiCached,
-            },
+            ...(aiInsights && {
+                aiInsights: {
+                    ...aiInsights,
+                    cached: aiCached,
+                },
+            }),
         };
 
         // Cache the full analytics
@@ -236,6 +247,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<AnalyticsR
             success: true,
             analytics: fullAnalytics,
             cached: false,
+            aiRequested: includeAI,
         });
     } catch (error) {
         console.error('[Analytics] Error:', error);

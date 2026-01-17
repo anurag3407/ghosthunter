@@ -20,6 +20,7 @@ import {
     TrendingDown,
     Minus,
     Shield,
+    Sparkles,
 } from 'lucide-react';
 
 import {
@@ -48,7 +49,7 @@ import type { AIInsights } from '@/lib/agents/code-police/analytics-ai';
  */
 
 interface AnalyticsData extends FullAnalytics {
-    aiInsights: AIInsights & { cached: boolean };
+    aiInsights?: AIInsights & { cached: boolean };
 }
 
 export default function AnalyticsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -59,6 +60,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
     const [projectName, setProjectName] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const fetchAnalytics = async (fresh = false) => {
@@ -92,6 +94,24 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);
+        }
+    };
+
+    // Fetch AI insights on demand (saves tokens)
+    const fetchAIAnalytics = async () => {
+        if (!analytics) return;
+        setIsLoadingAI(true);
+        try {
+            const url = `/api/code-police/analytics?projectId=${projectId}&includeAI=true`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (res.ok && data.analytics?.aiInsights) {
+                setAnalytics({ ...analytics, aiInsights: data.analytics.aiInsights });
+            }
+        } catch (err) {
+            console.error('Failed to fetch AI insights:', err);
+        } finally {
+            setIsLoadingAI(false);
         }
     };
 
@@ -198,13 +218,47 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                     </div>
                 </div>
 
-                {/* AI Insights */}
+                {/* AI Insights - Optional (generates tokens only on request) */}
                 <div className="lg:col-span-2">
-                    <InsightPanel
-                        summary={analytics.aiInsights.summary}
-                        actions={analytics.aiInsights.topActions}
-                        cached={analytics.aiInsights.cached}
-                    />
+                    {analytics.aiInsights ? (
+                        <InsightPanel
+                            summary={analytics.aiInsights.summary}
+                            actions={analytics.aiInsights.topActions}
+                            cached={analytics.aiInsights.cached}
+                        />
+                    ) : (
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-violet-500/10">
+                                        <Sparkles className="w-5 h-5 text-violet-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-white">AI Analysis</h3>
+                                        <p className="text-sm text-zinc-400">Get AI-powered insights and recommendations</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={fetchAIAnalytics}
+                                disabled={isLoadingAI}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-600/50 rounded-lg text-white font-medium transition-colors"
+                            >
+                                {isLoadingAI ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Generating insights...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="w-4 h-4" />
+                                        Generate AI Analysis
+                                    </>
+                                )}
+                            </button>
+                            <p className="text-xs text-zinc-500 mt-2 text-center">Uses AI tokens • Results cached for 7 days</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -244,6 +298,106 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                     />
                 </MetricGrid>
             </div>
+
+            {/* 🚀 FOUNDER DASHBOARD - New Section */}
+            {analytics.founderMetrics && (
+                <div className="space-y-6">
+                    <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                        🚀 Founder Dashboard
+                        <span className="text-xs font-normal text-zinc-500 bg-zinc-800 px-2 py-1 rounded">No AI tokens used</span>
+                    </h2>
+
+                    {/* Key Founder Metrics */}
+                    <div className="grid md:grid-cols-4 gap-4">
+                        {/* Delivery Velocity */}
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                            <div className="text-sm text-zinc-400 mb-1">Delivery Velocity</div>
+                            <div className="text-2xl font-bold text-white">
+                                {analytics.founderMetrics.deliveryVelocity}
+                                <span className="text-sm font-normal text-zinc-400 ml-1">PRs/week</span>
+                            </div>
+                            <div className={`text-sm mt-1 ${analytics.founderMetrics.deliveryVelocityTrend === 'improving' ? 'text-green-400' :
+                                    analytics.founderMetrics.deliveryVelocityTrend === 'declining' ? 'text-red-400' : 'text-zinc-400'
+                                }`}>
+                                {analytics.founderMetrics.deliveryVelocityTrend === 'improving' && '↗ Improving'}
+                                {analytics.founderMetrics.deliveryVelocityTrend === 'declining' && '↘ Declining'}
+                                {analytics.founderMetrics.deliveryVelocityTrend === 'stable' && '→ Stable'}
+                            </div>
+                        </div>
+
+                        {/* Tech Debt Score */}
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                            <div className="text-sm text-zinc-400 mb-1">Tech Debt Score</div>
+                            <div className={`text-2xl font-bold ${analytics.founderMetrics.techDebtScore >= 70 ? 'text-green-400' :
+                                    analytics.founderMetrics.techDebtScore >= 40 ? 'text-yellow-400' : 'text-red-400'
+                                }`}>
+                                {analytics.founderMetrics.techDebtScore}
+                                <span className="text-sm font-normal text-zinc-400 ml-1">/100</span>
+                            </div>
+                            <div className="text-xs text-zinc-500 mt-1">Higher is healthier</div>
+                        </div>
+
+                        {/* Scale Readiness */}
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                            <div className="text-sm text-zinc-400 mb-1">Scale Readiness</div>
+                            <div className={`text-2xl font-bold ${analytics.founderMetrics.scaleReadinessScore >= 70 ? 'text-green-400' :
+                                    analytics.founderMetrics.scaleReadinessScore >= 40 ? 'text-yellow-400' : 'text-red-400'
+                                }`}>
+                                {analytics.founderMetrics.scaleReadinessScore}
+                                <span className="text-sm font-normal text-zinc-400 ml-1">/100</span>
+                            </div>
+                            <div className="text-xs text-zinc-500 mt-1">Ready to scale?</div>
+                        </div>
+
+                        {/* Team Productivity */}
+                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                            <div className="text-sm text-zinc-400 mb-1">Team Productivity</div>
+                            <div className="text-2xl font-bold text-white">
+                                {analytics.founderMetrics.avgCommitsPerWeek}
+                                <span className="text-sm font-normal text-zinc-400 ml-1">commits/week</span>
+                            </div>
+                            <div className="text-xs text-zinc-500 mt-1">
+                                {analytics.founderMetrics.commitsPerContributor} per contributor
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Investor Readiness Checklist */}
+                    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+                        <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                            📋 Investor Readiness Checklist
+                            <span className="text-xs font-normal text-zinc-500">
+                                ({analytics.founderMetrics.investorChecklist.filter(i => i.passed).length}/{analytics.founderMetrics.investorChecklist.length} passed)
+                            </span>
+                        </h3>
+                        <div className="grid md:grid-cols-3 gap-3">
+                            {analytics.founderMetrics.investorChecklist.map((item, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`flex items-center gap-3 p-3 rounded-lg border ${item.passed
+                                            ? 'bg-green-500/5 border-green-500/20'
+                                            : 'bg-zinc-800/50 border-zinc-700/50'
+                                        }`}
+                                >
+                                    <span className={`text-lg ${item.passed ? 'text-green-400' : 'text-zinc-500'}`}>
+                                        {item.passed ? '✓' : '○'}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className={`text-sm truncate ${item.passed ? 'text-white' : 'text-zinc-400'}`}>
+                                            {item.item}
+                                        </div>
+                                        <div className={`text-xs ${item.importance === 'critical' ? 'text-red-400' :
+                                                item.importance === 'important' ? 'text-yellow-400' : 'text-zinc-500'
+                                            }`}>
+                                            {item.importance}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Activity & Languages */}
             <div className="grid lg:grid-cols-2 gap-6">
@@ -289,10 +443,10 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-semibold text-white">Top Contributors</h2>
                         <div className={`flex items-center gap-2 text-sm px-2 py-1 rounded-lg ${analytics.contributors.busFactor <= 1
-                                ? 'bg-red-500/10 text-red-400'
-                                : analytics.contributors.busFactor <= 2
-                                    ? 'bg-yellow-500/10 text-yellow-400'
-                                    : 'bg-green-500/10 text-green-400'
+                            ? 'bg-red-500/10 text-red-400'
+                            : analytics.contributors.busFactor <= 2
+                                ? 'bg-yellow-500/10 text-yellow-400'
+                                : 'bg-green-500/10 text-green-400'
                             }`}>
                             Bus Factor: {analytics.contributors.busFactor}
                         </div>
@@ -385,10 +539,10 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                             Documentation
                         </h2>
                         <span className={`px-2 py-1 rounded-lg text-sm font-medium ${analytics.documentation.score >= 70
-                                ? 'bg-green-500/10 text-green-400'
-                                : analytics.documentation.score >= 40
-                                    ? 'bg-yellow-500/10 text-yellow-400'
-                                    : 'bg-red-500/10 text-red-400'
+                            ? 'bg-green-500/10 text-green-400'
+                            : analytics.documentation.score >= 40
+                                ? 'bg-yellow-500/10 text-yellow-400'
+                                : 'bg-red-500/10 text-red-400'
                             }`}>
                             {analytics.documentation.score}/100
                         </span>
@@ -425,8 +579,8 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                             Testing
                         </h2>
                         <span className={`px-2 py-1 rounded-lg text-sm font-medium ${analytics.testing.hasTests
-                                ? 'bg-green-500/10 text-green-400'
-                                : 'bg-red-500/10 text-red-400'
+                            ? 'bg-green-500/10 text-green-400'
+                            : 'bg-red-500/10 text-red-400'
                             }`}>
                             {analytics.testing.hasTests ? 'Tests Found' : 'No Tests'}
                         </span>
@@ -472,8 +626,14 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
 
             {/* Footer */}
             <div className="text-center text-zinc-500 text-sm">
-                Last updated: {new Date(analytics.aiInsights.generatedAt).toLocaleString()}
-                {analytics.aiInsights.cached && ' (cached)'}
+                {analytics.aiInsights ? (
+                    <>
+                        AI insights generated: {new Date(analytics.aiInsights.generatedAt).toLocaleString()}
+                        {analytics.aiInsights.cached && ' (cached for 7 days)'}
+                    </>
+                ) : (
+                    <>Data updated: {new Date().toLocaleString()}</>
+                )}
             </div>
         </div>
     );

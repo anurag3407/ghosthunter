@@ -87,6 +87,43 @@ export interface HealthScoreBreakdown {
     };
 }
 
+// Founder-focused metrics - computed deterministically (no AI tokens)
+export interface FounderMetrics {
+    // Delivery velocity (PRs merged per week)
+    deliveryVelocity: number;
+    deliveryVelocityTrend: 'improving' | 'stable' | 'declining';
+
+    // Tech debt indicators
+    techDebtScore: number; // 0-100 (higher = less debt, healthier)
+    techDebtFactors: {
+        largePRRatio: number; // % of PRs that are large (>500 lines)
+        staleIssuesCount: number; // issues open > 30 days
+        missingTests: boolean;
+        missingDocs: boolean;
+    };
+
+    // Team productivity
+    commitsPerContributor: number;
+    avgCommitsPerWeek: number;
+
+    // Scale readiness
+    scaleReadinessScore: number; // 0-100
+    scaleReadinessFactors: {
+        hasTests: boolean;
+        hasDocs: boolean;
+        hasLicense: boolean;
+        healthyBusFactor: boolean; // busFactor >= 2
+        activelyMaintained: boolean; // commits in last 30 days
+    };
+
+    // Investor checklist (deterministic assessment)
+    investorChecklist: {
+        item: string;
+        passed: boolean;
+        importance: 'critical' | 'important' | 'nice-to-have';
+    }[];
+}
+
 export interface FullAnalytics {
     overview: RepoOverview;
     healthScore: HealthScoreBreakdown;
@@ -105,6 +142,8 @@ export interface FullAnalytics {
     issues: IssueMetrics;
     documentation: DocPresence & { score: number };
     testing: TestInfo;
+    // NEW: Founder-focused metrics (no AI tokens)
+    founderMetrics: FounderMetrics;
 }
 
 // ============================================================================
@@ -739,6 +778,17 @@ export async function computeFullAnalytics(
 
     console.log(`[Analytics] Health score: ${healthScore.total} (${healthScore.grade})`);
 
+    // Calculate founder-focused metrics (no AI tokens)
+    const founderMetrics = computeFounderMetrics(
+        activityData,
+        prMetrics,
+        issueMetrics,
+        docPresence,
+        testInfo,
+        busFactor,
+        contributors.length
+    );
+
     return {
         overview,
         healthScore,
@@ -757,5 +807,99 @@ export async function computeFullAnalytics(
         issues: issueMetrics,
         documentation: { ...docPresence, score: docScore },
         testing: testInfo,
+        founderMetrics,
+    };
+}
+
+/**
+ * Compute founder-focused metrics deterministically (no AI tokens)
+ */
+function computeFounderMetrics(
+    activity: { total: number; commits: CommitActivity[]; trend: 'increasing' | 'stable' | 'decreasing' },
+    prMetrics: PRMetrics,
+    issueMetrics: IssueMetrics,
+    docPresence: DocPresence,
+    testInfo: TestInfo,
+    busFactor: number,
+    contributorCount: number
+): FounderMetrics {
+    // Delivery velocity: PRs merged per week
+    const deliveryVelocity = Math.round((prMetrics.mergedLast30Days / 4) * 10) / 10;
+
+    // Velocity trend based on activity trend
+    const deliveryVelocityTrend: 'improving' | 'stable' | 'declining' =
+        activity.trend === 'increasing' ? 'improving' :
+            activity.trend === 'decreasing' ? 'declining' : 'stable';
+
+    // Tech debt score (0-100, higher = healthier)
+    const largePRRatio = prMetrics.prSizes.large /
+        Math.max(1, prMetrics.prSizes.small + prMetrics.prSizes.medium + prMetrics.prSizes.large) * 100;
+    const staleIssuesCount = issueMetrics.openCount; // Approximation
+    const missingTests = !testInfo.hasTests;
+    const missingDocs = !docPresence.hasReadme;
+
+    let techDebtScore = 100;
+    if (largePRRatio > 30) techDebtScore -= 20;
+    if (largePRRatio > 50) techDebtScore -= 15;
+    if (staleIssuesCount > 20) techDebtScore -= 15;
+    if (staleIssuesCount > 50) techDebtScore -= 10;
+    if (missingTests) techDebtScore -= 25;
+    if (missingDocs) techDebtScore -= 15;
+    techDebtScore = Math.max(0, techDebtScore);
+
+    // Team productivity
+    const commitsPerContributor = contributorCount > 0
+        ? Math.round((activity.total / contributorCount) * 10) / 10
+        : 0;
+    const avgCommitsPerWeek = Math.round((activity.total / 13) * 10) / 10; // 13 weeks = 90 days
+
+    // Scale readiness
+    const hasTests = testInfo.hasTests;
+    const hasDocs = docPresence.hasReadme || docPresence.hasDocs;
+    const hasLicense = docPresence.hasLicense;
+    const healthyBusFactor = busFactor >= 2;
+    const activelyMaintained = activity.total > 10; // At least 10 commits in 90 days
+
+    let scaleReadinessScore = 0;
+    if (hasTests) scaleReadinessScore += 25;
+    if (hasDocs) scaleReadinessScore += 20;
+    if (hasLicense) scaleReadinessScore += 15;
+    if (healthyBusFactor) scaleReadinessScore += 25;
+    if (activelyMaintained) scaleReadinessScore += 15;
+
+    // Investor checklist
+    const investorChecklist: FounderMetrics['investorChecklist'] = [
+        { item: 'Active development (commits in last 90 days)', passed: activity.total > 0, importance: 'critical' },
+        { item: 'Multiple contributors (bus factor ≥ 2)', passed: healthyBusFactor, importance: 'critical' },
+        { item: 'Test coverage in place', passed: hasTests, importance: 'critical' },
+        { item: 'Documentation exists', passed: hasDocs, importance: 'important' },
+        { item: 'Open source license', passed: hasLicense, importance: 'important' },
+        { item: 'Fast PR turnaround (<24hr avg)', passed: prMetrics.avgMergeTimeHours < 24, importance: 'important' },
+        { item: 'Issue responsiveness (<7 days)', passed: issueMetrics.avgCloseTimeDays < 7, importance: 'nice-to-have' },
+        { item: 'Contributing guidelines', passed: docPresence.hasContributing, importance: 'nice-to-have' },
+        { item: 'Security policy', passed: docPresence.hasSecurity, importance: 'nice-to-have' },
+    ];
+
+    return {
+        deliveryVelocity,
+        deliveryVelocityTrend,
+        techDebtScore,
+        techDebtFactors: {
+            largePRRatio: Math.round(largePRRatio),
+            staleIssuesCount,
+            missingTests,
+            missingDocs,
+        },
+        commitsPerContributor,
+        avgCommitsPerWeek,
+        scaleReadinessScore,
+        scaleReadinessFactors: {
+            hasTests,
+            hasDocs,
+            hasLicense,
+            healthyBusFactor,
+            activelyMaintained,
+        },
+        investorChecklist,
     };
 }
