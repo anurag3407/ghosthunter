@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { getUserEmail, syncUserEmailToFirestore } from "@/lib/utils/clerk";
 
 /**
  * GET /api/code-police/projects
@@ -9,7 +10,7 @@ import { getAdminDb } from "@/lib/firebase/admin";
 export async function GET() {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -84,7 +85,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -121,10 +122,19 @@ export async function POST(request: NextRequest) {
     // Generate webhook secret
     const webhookSecret = crypto.randomUUID();
 
-    // Get user email for notifications
-    const userDoc = await adminDb.collection("users").doc(userId).get();
-    const userData = userDoc.data();
-    const ownerEmail = userData?.email || "";
+    // Get user email from Clerk (works for both Google and GitHub auth)
+    const emailInfo = await getUserEmail(userId);
+    let ownerEmail = emailInfo.email || "";
+
+    // If email not available from Clerk, fallback to Firestore
+    if (!ownerEmail) {
+      const userDoc = await adminDb.collection("users").doc(userId).get();
+      const userData = userDoc.data();
+      ownerEmail = userData?.email || "";
+    } else {
+      // Sync email to Firestore for future use
+      await syncUserEmailToFirestore(userId, ownerEmail, adminDb);
+    }
 
     // Create project with Vercel-style status and custom rules
     const projectRef = adminDb.collection("projects").doc();
@@ -170,7 +180,7 @@ export async function POST(request: NextRequest) {
 
     await projectRef.set(project);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       project,
       webhookUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/github`,
       webhookSecret,

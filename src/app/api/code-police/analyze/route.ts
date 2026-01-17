@@ -8,6 +8,7 @@ import {
 } from "@/lib/agents/code-police/analyzer";
 import { sendAnalysisReport } from "@/lib/agents/code-police/email";
 import { fetchCommit, fetchFileContent } from "@/lib/agents/code-police/github";
+import { getUserEmail } from "@/lib/utils/clerk";
 import type { CodeIssue, AnalysisRun, IssueSeverity } from "@/types";
 import type { DocumentData, QueryDocumentSnapshot, Firestore } from "firebase-admin/firestore";
 
@@ -345,9 +346,11 @@ export async function POST(request: NextRequest) {
     // Send email if requested
     if (sendEmail) {
       try {
-        // Use provided email or fall back to user's email from Firestore
-        let emailTo = recipientEmail;
+        // Get email from Clerk first (works for Google and GitHub auth)
+        const emailInfo = await getUserEmail(userId);
+        let emailTo = recipientEmail || emailInfo.email;
 
+        // Fallback: check Firestore for legacy users
         if (!emailTo) {
           const userDoc = await adminDb.collection("users").doc(userId).get();
           emailTo = userDoc.data()?.email;

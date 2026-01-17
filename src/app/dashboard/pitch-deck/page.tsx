@@ -10,6 +10,7 @@ import {
   Plus,
   Sparkles,
   Wand2,
+  Github,
 } from "lucide-react";
 
 /**
@@ -78,8 +79,9 @@ export default async function PitchDeckPage() {
         <Link
           href="/dashboard/pitch-deck/new"
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-medium rounded-xl transition-colors border border-zinc-700"
+          title="Generate pitch deck from GitHub README"
         >
-          <Plus className="w-4 h-4" />
+          <Github className="w-4 h-4" />
           Quick Deck
         </Link>
         <Link

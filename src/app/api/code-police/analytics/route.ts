@@ -1,267 +1,248 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { getAdminDb } from "@/lib/firebase/admin";
-import { fetchRepoStats } from "@/lib/agents/code-police/github";
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { getAdminDb } from '@/lib/firebase/admin';
+import { computeFullAnalytics, type FullAnalytics } from '@/lib/agents/code-police/analytics';
+import {
+    generateAIInsights,
+    createMetricsCacheKey,
+    type MetricsSummary,
+    type AIInsights,
+} from '@/lib/agents/code-police/analytics-ai';
 
 /**
  * ============================================================================
- * CODE POLICE - ANALYTICS API
+ * CODE POLICE - ANALYTICS API ENDPOINT
  * ============================================================================
- * GET /api/code-police/analytics?projectId=...
- * 
- * Returns comprehensive analytics for a project including:
- * - Issue trends over time
- * - Code health score
- * - Most problematic files
- * - Contributor statistics
+ * GET /api/code-police/analytics?projectId=xxx
+ *
+ * Fetches comprehensive repository analytics with caching.
+ * Most metrics are computed deterministically (no AI tokens).
+ * AI is only used for executive summary and action items.
  */
 
-interface IssueCountsByTime {
-    date: string;
-    critical: number;
-    high: number;
-    medium: number;
-    low: number;
-    info: number;
-    total: number;
-}
-
-interface FileStats {
-    filePath: string;
-    issueCount: number;
-    criticalCount: number;
-    highCount: number;
-    categories: string[];
-}
-
 interface AnalyticsResponse {
-    projectId: string;
-    projectName: string;
-    repoFullName: string;
-
-    // Summary statistics
-    totalAnalysisRuns: number;
-    totalIssuesFound: number;
-    totalIssuesFixed: number;
-    codeHealthScore: number;
-
-    // Issue breakdown
-    issueCounts: {
-        critical: number;
-        high: number;
-        medium: number;
-        low: number;
-        info: number;
-    };
-
-    // Trends over time (last 30 days)
-    issueTrends: IssueCountsByTime[];
-
-    // Most problematic files
-    topProblematicFiles: FileStats[];
-
-    // Category breakdown
-    issuesByCategory: Record<string, number>;
-
-    // Time range
-    firstAnalysis?: string;
-    lastAnalysis?: string;
+    success: boolean;
+    analytics?: FullAnalytics & { aiInsights: AIInsights };
+    error?: string;
+    cached?: boolean;
 }
 
-export async function GET(request: NextRequest) {
+// Cache duration: 1 hour for analytics data
+const ANALYTICS_CACHE_DURATION_MS = 60 * 60 * 1000;
+
+// Cache duration: 24 hours for AI insights
+const AI_CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
+
+export async function GET(request: NextRequest): Promise<NextResponse<AnalyticsResponse>> {
     try {
-        const authResult = await auth();
-        const userId = authResult?.userId;
+        const { userId } = await auth();
 
         if (!userId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
 
-        const projectId = request.nextUrl.searchParams.get("projectId");
+        const { searchParams } = new URL(request.url);
+        const projectId = searchParams.get('projectId');
+        const skipCache = searchParams.get('fresh') === 'true';
+
         if (!projectId) {
-            return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
+            return NextResponse.json(
+                { success: false, error: 'Missing projectId parameter' },
+                { status: 400 }
+            );
         }
 
+        // Get Firestore instance
         const adminDb = getAdminDb();
         if (!adminDb) {
-            return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+            return NextResponse.json(
+                { success: false, error: 'Database not configured' },
+                { status: 503 }
+            );
         }
 
-        // Get project
-        const projectDoc = await adminDb.collection("projects").doc(projectId).get();
+        // Fetch project
+        const projectDoc = await adminDb.collection('projects').doc(projectId).get();
         if (!projectDoc.exists) {
-            return NextResponse.json({ error: "Project not found" }, { status: 404 });
+            return NextResponse.json(
+                { success: false, error: 'Project not found' },
+                { status: 404 }
+            );
         }
 
-        const project = projectDoc.data();
-        if (project?.userId !== userId) {
-            return NextResponse.json({ error: "Access denied" }, { status: 403 });
+        const project = projectDoc.data()!;
+
+        // Verify ownership
+        if (project.userId !== userId) {
+            return NextResponse.json(
+                { success: false, error: 'Access denied' },
+                { status: 403 }
+            );
         }
 
-        // Get all analysis runs for this project
-        const runsSnapshot = await adminDb
-            .collection("analysis_runs")
-            .where("projectId", "==", projectId)
-            .orderBy("createdAt", "desc")
-            .limit(100)
-            .get();
+        // Get owner and repo from project (with fallback for older projects)
+        let owner = project.githubOwner;
+        let repo = project.githubRepoName;
 
-        const runs = runsSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                issueCounts: data.issueCounts as { critical: number; high: number; medium: number; low: number; info: number } | undefined,
-                autoFixPrUrl: data.autoFixPrUrl as string | undefined,
-                autoFixesGenerated: data.autoFixesGenerated as number | undefined,
-                createdAt: data.createdAt?.toDate?.() || new Date()
-            };
-        });
-
-        // Aggregate issue counts
-        let totalCritical = 0;
-        let totalHigh = 0;
-        let totalMedium = 0;
-        let totalLow = 0;
-        let totalInfo = 0;
-        let totalIssuesFixed = 0;
-
-        const issueTrendMap = new Map<string, IssueCountsByTime>();
-        const fileStatsMap = new Map<string, FileStats>();
-        const categoryCount: Record<string, number> = {};
-
-        for (const run of runs) {
-            const counts = run.issueCounts || { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
-            totalCritical += counts.critical || 0;
-            totalHigh += counts.high || 0;
-            totalMedium += counts.medium || 0;
-            totalLow += counts.low || 0;
-            totalInfo += counts.info || 0;
-
-            if (run.autoFixPrUrl) {
-                totalIssuesFixed += run.autoFixesGenerated || 0;
+        // Fallback: parse from githubFullName if individual fields are missing
+        if ((!owner || !repo) && project.githubFullName) {
+            const parts = project.githubFullName.split('/');
+            if (parts.length === 2) {
+                owner = parts[0];
+                repo = parts[1];
             }
+        }
 
-            // Add to daily trend
-            const dateKey = run.createdAt.toISOString().split("T")[0];
-            if (!issueTrendMap.has(dateKey)) {
-                issueTrendMap.set(dateKey, {
-                    date: dateKey,
-                    critical: 0,
-                    high: 0,
-                    medium: 0,
-                    low: 0,
-                    info: 0,
-                    total: 0
-                });
-            }
-            const dayStats = issueTrendMap.get(dateKey)!;
-            dayStats.critical += counts.critical || 0;
-            dayStats.high += counts.high || 0;
-            dayStats.medium += counts.medium || 0;
-            dayStats.low += counts.low || 0;
-            dayStats.info += counts.info || 0;
-            dayStats.total += (counts.critical || 0) + (counts.high || 0) +
-                (counts.medium || 0) + (counts.low || 0) + (counts.info || 0);
+        if (!owner || !repo) {
+            return NextResponse.json(
+                { success: false, error: 'Repository information not found. Please reconnect the repository.' },
+                { status: 400 }
+            );
+        }
 
-            // Fetch issues for this run to get file-level and category stats
-            try {
-                const issuesSnapshot = await adminDb
-                    .collection("analysis_runs")
-                    .doc(run.id)
-                    .collection("issues")
-                    .get();
+        // Check cache first (unless skipCache is set)
+        const cacheRef = adminDb.collection('analytics_cache').doc(projectId);
 
-                for (const issueDoc of issuesSnapshot.docs) {
-                    const issue = issueDoc.data();
+        if (!skipCache) {
+            const cached = await cacheRef.get();
+            if (cached.exists) {
+                const cacheData = cached.data()!;
+                const cacheAge = Date.now() - (cacheData.cachedAt?.toDate?.()?.getTime() || 0);
 
-                    // Track file stats
-                    const filePath = issue.filePath || "unknown";
-                    if (!fileStatsMap.has(filePath)) {
-                        fileStatsMap.set(filePath, {
-                            filePath,
-                            issueCount: 0,
-                            criticalCount: 0,
-                            highCount: 0,
-                            categories: []
-                        });
-                    }
-                    const fileStats = fileStatsMap.get(filePath)!;
-                    fileStats.issueCount++;
-                    if (issue.severity === "critical") fileStats.criticalCount++;
-                    if (issue.severity === "high") fileStats.highCount++;
-                    if (issue.category && !fileStats.categories.includes(issue.category)) {
-                        fileStats.categories.push(issue.category);
-                    }
-
-                    // Track category
-                    const category = issue.category || "other";
-                    categoryCount[category] = (categoryCount[category] || 0) + 1;
+                if (cacheAge < ANALYTICS_CACHE_DURATION_MS) {
+                    console.log(`[Analytics] Serving cached analytics for ${owner}/${repo}`);
+                    return NextResponse.json({
+                        success: true,
+                        analytics: cacheData.analytics,
+                        cached: true,
+                    });
                 }
-            } catch {
-                // Skip if issues subcollection doesn't exist
             }
         }
 
-        const totalIssues = totalCritical + totalHigh + totalMedium + totalLow + totalInfo;
+        // Get GitHub token
+        let githubToken: string | null = null;
 
-        // Calculate code health score (0-100)
-        // Higher score = healthier code (fewer critical/high issues)
-        let codeHealthScore = 100;
-        if (totalIssues > 0) {
-            // Weighted score: critical = 25 points, high = 10 points, medium = 3 points, low = 1 point
-            const weightedIssues = (totalCritical * 25) + (totalHigh * 10) + (totalMedium * 3) + totalLow;
-            const maxPenalty = 80; // Max penalty is 80 points
-            const penalty = Math.min(maxPenalty, weightedIssues);
-            codeHealthScore = Math.max(20, 100 - penalty); // Minimum score is 20
+        try {
+            const clerkResponse = await fetch(
+                `https://api.clerk.com/v1/users/${userId}/oauth_access_tokens/oauth_github`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+                    },
+                }
+            );
+
+            if (clerkResponse.ok) {
+                const tokens = await clerkResponse.json();
+                if (tokens && tokens.length > 0 && tokens[0].token) {
+                    githubToken = tokens[0].token;
+                }
+            }
+        } catch (tokenError) {
+            console.error('[Analytics] Error fetching Clerk token:', tokenError);
         }
 
-        // Sort file stats by issue count
-        const topProblematicFiles = Array.from(fileStatsMap.values())
-            .sort((a, b) => {
-                // Sort by critical first, then high, then total
-                if (b.criticalCount !== a.criticalCount) return b.criticalCount - a.criticalCount;
-                if (b.highCount !== a.highCount) return b.highCount - a.highCount;
-                return b.issueCount - a.issueCount;
-            })
-            .slice(0, 10);
+        // Fallback to stored token
+        if (!githubToken) {
+            const userDoc = await adminDb.collection('users').doc(userId).get();
+            const userData = userDoc.data();
+            githubToken = userData?.githubAccessToken || null;
+        }
 
-        // Sort trends by date
-        const issueTrends = Array.from(issueTrendMap.values())
-            .sort((a, b) => a.date.localeCompare(b.date))
-            .slice(-30); // Last 30 days
+        if (!githubToken) {
+            return NextResponse.json(
+                { success: false, error: 'GitHub token not found. Please reconnect GitHub.' },
+                { status: 400 }
+            );
+        }
 
-        const response: AnalyticsResponse = {
-            projectId,
-            projectName: project?.name || "Unknown",
-            repoFullName: project?.githubFullName || "",
+        console.log(`[Analytics] Computing analytics for ${owner}/${repo}`);
 
-            totalAnalysisRuns: runs.length,
-            totalIssuesFound: totalIssues,
-            totalIssuesFixed,
-            codeHealthScore: Math.round(codeHealthScore),
+        // Compute full analytics (deterministic - no AI)
+        const analytics = await computeFullAnalytics(githubToken, owner, repo);
 
-            issueCounts: {
-                critical: totalCritical,
-                high: totalHigh,
-                medium: totalMedium,
-                low: totalLow,
-                info: totalInfo
-            },
-
-            issueTrends,
-            topProblematicFiles,
-            issuesByCategory: categoryCount,
-
-            firstAnalysis: runs.length > 0 ? runs[runs.length - 1].createdAt.toISOString() : undefined,
-            lastAnalysis: runs.length > 0 ? runs[0].createdAt.toISOString() : undefined
+        // Prepare metrics summary for AI
+        const metricsSummary: MetricsSummary = {
+            repoName: `${owner}/${repo}`,
+            languages: Object.fromEntries(
+                analytics.languages.slice(0, 3).map((l) => [l.name, l.percentage])
+            ),
+            commits90d: analytics.activity.commitsLast90Days,
+            contributorCount: analytics.contributors.total,
+            busFactor: analytics.contributors.busFactor,
+            avgPRMergeHrs: analytics.pullRequests.avgMergeTimeHours,
+            openIssues: analytics.issues.openCount,
+            avgIssueCloseDays: analytics.issues.avgCloseTimeDays,
+            docsScore: analytics.documentation.score,
+            testCount: analytics.testing.testFileCount,
+            healthScore: analytics.healthScore.total,
+            healthGrade: analytics.healthScore.grade,
+            trend: analytics.activity.trend,
         };
 
-        return NextResponse.json(response);
+        // Check AI insights cache
+        const aiCacheKey = createMetricsCacheKey(metricsSummary);
+        const aiCacheRef = adminDb.collection('ai_insights_cache').doc(aiCacheKey);
 
+        let aiInsights: AIInsights;
+        let aiCached = false;
+
+        const aiCacheDoc = await aiCacheRef.get();
+        if (aiCacheDoc.exists && !skipCache) {
+            const aiCacheData = aiCacheDoc.data()!;
+            const aiCacheAge = Date.now() - (aiCacheData.cachedAt?.toDate?.()?.getTime() || 0);
+
+            if (aiCacheAge < AI_CACHE_DURATION_MS) {
+                console.log(`[Analytics] Using cached AI insights`);
+                aiInsights = aiCacheData.insights;
+                aiCached = true;
+            } else {
+                // Generate fresh AI insights
+                aiInsights = await generateAIInsights(metricsSummary);
+                await aiCacheRef.set({
+                    insights: aiInsights,
+                    cachedAt: new Date(),
+                });
+            }
+        } else {
+            // Generate fresh AI insights
+            console.log(`[Analytics] Generating AI insights (token usage: ~400-800 tokens)`);
+            aiInsights = await generateAIInsights(metricsSummary);
+            await aiCacheRef.set({
+                insights: aiInsights,
+                cachedAt: new Date(),
+            });
+        }
+
+        // Combine analytics with AI insights
+        const fullAnalytics = {
+            ...analytics,
+            aiInsights: {
+                ...aiInsights,
+                cached: aiCached,
+            },
+        };
+
+        // Cache the full analytics
+        await cacheRef.set({
+            analytics: fullAnalytics,
+            cachedAt: new Date(),
+        });
+
+        console.log(`[Analytics] Completed analytics for ${owner}/${repo}, health: ${analytics.healthScore.total}`);
+
+        return NextResponse.json({
+            success: true,
+            analytics: fullAnalytics,
+            cached: false,
+        });
     } catch (error) {
-        console.error("[Analytics API] Error:", error);
+        console.error('[Analytics] Error:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
         return NextResponse.json(
-            { error: "Failed to fetch analytics" },
+            { success: false, error: errorMessage },
             { status: 500 }
         );
     }

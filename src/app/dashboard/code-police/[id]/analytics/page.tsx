@@ -1,423 +1,479 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeftIcon, RefreshCwIcon, GitBranchIcon, FileCodeIcon, TrendingUpIcon, AlertTriangleIcon, CheckCircleIcon } from "lucide-react";
+import { useState, useEffect, use } from 'react';
+import Link from 'next/link';
+import {
+    ArrowLeft,
+    RefreshCw,
+    Loader2,
+    AlertCircle,
+    Star,
+    GitFork,
+    AlertTriangle,
+    GitPullRequest,
+    Users,
+    FileCode,
+    BookOpen,
+    TestTube,
+    Clock,
+    TrendingUp,
+    TrendingDown,
+    Minus,
+    Shield,
+} from 'lucide-react';
 
-interface IssueCountsByTime {
-    date: string;
-    critical: number;
-    high: number;
-    medium: number;
-    low: number;
-    info: number;
-    total: number;
+import {
+    HealthScoreGauge,
+    MetricCard,
+    MetricGrid,
+    ActivityChart,
+    LanguageBar,
+    InsightPanel,
+    ScoreBreakdown,
+} from '@/components/code-police/analytics';
+
+import type { FullAnalytics } from '@/lib/agents/code-police/analytics';
+import type { AIInsights } from '@/lib/agents/code-police/analytics-ai';
+
+/**
+ * ============================================================================
+ * CODE POLICE - ANALYTICS DASHBOARD
+ * ============================================================================
+ * Comprehensive repository analytics with:
+ * - Health score visualization
+ * - Activity trends
+ * - Contributor statistics
+ * - PR/Issue metrics
+ * - AI-generated insights (minimal token usage)
+ */
+
+interface AnalyticsData extends FullAnalytics {
+    aiInsights: AIInsights & { cached: boolean };
 }
 
-interface FileStats {
-    filePath: string;
-    issueCount: number;
-    criticalCount: number;
-    highCount: number;
-    categories: string[];
-}
-
-interface AnalyticsData {
-    projectId: string;
-    projectName: string;
-    repoFullName: string;
-    totalAnalysisRuns: number;
-    totalIssuesFound: number;
-    totalIssuesFixed: number;
-    codeHealthScore: number;
-    issueCounts: {
-        critical: number;
-        high: number;
-        medium: number;
-        low: number;
-        info: number;
-    };
-    issueTrends: IssueCountsByTime[];
-    topProblematicFiles: FileStats[];
-    issuesByCategory: Record<string, number>;
-    firstAnalysis?: string;
-    lastAnalysis?: string;
-}
-
-function CodeHealthGauge({ score }: { score: number }) {
-    const getColor = (score: number) => {
-        if (score >= 80) return "#22c55e"; // Green
-        if (score >= 60) return "#eab308"; // Yellow
-        if (score >= 40) return "#f97316"; // Orange
-        return "#ef4444"; // Red
-    };
-
-    const getLabel = (score: number) => {
-        if (score >= 80) return "Excellent";
-        if (score >= 60) return "Good";
-        if (score >= 40) return "Fair";
-        return "Needs Attention";
-    };
-
-    const circumference = 2 * Math.PI * 45;
-    const progress = (score / 100) * circumference;
-
-    return (
-        <div className="flex flex-col items-center">
-            <div className="relative w-32 h-32">
-                <svg className="transform -rotate-90 w-full h-full">
-                    <circle
-                        cx="64"
-                        cy="64"
-                        r="45"
-                        stroke="#27272a"
-                        strokeWidth="10"
-                        fill="transparent"
-                    />
-                    <circle
-                        cx="64"
-                        cy="64"
-                        r="45"
-                        stroke={getColor(score)}
-                        strokeWidth="10"
-                        fill="transparent"
-                        strokeDasharray={circumference}
-                        strokeDashoffset={circumference - progress}
-                        strokeLinecap="round"
-                        className="transition-all duration-1000 ease-out"
-                    />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-bold text-white">{score}</span>
-                </div>
-            </div>
-            <span className="mt-2 text-sm font-medium" style={{ color: getColor(score) }}>
-                {getLabel(score)}
-            </span>
-        </div>
-    );
-}
-
-function IssueBar({ label, count, color, maxCount }: { label: string; count: number; color: string; maxCount: number }) {
-    const width = maxCount > 0 ? (count / maxCount) * 100 : 0;
-
-    return (
-        <div className="flex items-center gap-3">
-            <div className="w-20 text-sm text-zinc-400 capitalize">{label}</div>
-            <div className="flex-1 h-6 bg-zinc-800 rounded-full overflow-hidden">
-                <div
-                    className="h-full rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${width}%`, backgroundColor: color }}
-                />
-            </div>
-            <div className="w-12 text-right text-sm font-medium text-white">{count}</div>
-        </div>
-    );
-}
-
-function TrendChart({ trends }: { trends: IssueCountsByTime[] }) {
-    if (trends.length === 0) {
-        return (
-            <div className="flex items-center justify-center h-48 text-zinc-500">
-                No trend data available yet
-            </div>
-        );
-    }
-
-    const maxTotal = Math.max(...trends.map(t => t.total), 1);
-    const height = 150;
-
-    return (
-        <div className="relative h-48">
-            <div className="absolute inset-0 flex items-end gap-1">
-                {trends.map((trend, i) => {
-                    const barHeight = (trend.total / maxTotal) * height;
-                    return (
-                        <div key={trend.date} className="flex-1 flex flex-col items-center group">
-                            <div
-                                className="w-full bg-gradient-to-t from-violet-600 to-violet-400 rounded-t hover:from-violet-500 hover:to-violet-300 transition-colors cursor-pointer"
-                                style={{ height: `${barHeight}px` }}
-                                title={`${trend.date}: ${trend.total} issues`}
-                            />
-                            {i % 7 === 0 && (
-                                <span className="text-[10px] text-zinc-500 mt-1 rotate-45 origin-left">
-                                    {trend.date.slice(5)}
-                                </span>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
-            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-zinc-500 -ml-8 w-8 text-right">
-                <span>{maxTotal}</span>
-                <span>{Math.round(maxTotal / 2)}</span>
-                <span>0</span>
-            </div>
-        </div>
-    );
-}
-
-export default function AnalyticsPage() {
-    const params = useParams();
-    const router = useRouter();
-    const projectId = params.id as string; // Using 'id' to match existing route
+export default function AnalyticsPage({ params }: { params: Promise<{ id: string }> }) {
+    const resolvedParams = use(params);
+    const projectId = resolvedParams.id;
 
     const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [projectName, setProjectName] = useState<string>('');
+    const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const fetchAnalytics = async (fresh = false) => {
+        if (fresh) setIsRefreshing(true);
+        else setIsLoading(true);
+        setError(null);
+
+        try {
+            // First get project info
+            const projectRes = await fetch(`/api/code-police/projects/${projectId}`);
+            const projectData = await projectRes.json();
+
+            if (!projectRes.ok) {
+                throw new Error(projectData.error || 'Failed to fetch project');
+            }
+
+            setProjectName(projectData.project.name);
+
+            // Fetch analytics
+            const url = `/api/code-police/analytics?projectId=${projectId}${fresh ? '&fresh=true' : ''}`;
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to fetch analytics');
+            }
+
+            setAnalytics(data.analytics);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load analytics');
+        } finally {
+            setIsLoading(false);
+            setIsRefreshing(false);
+        }
+    };
 
     useEffect(() => {
         fetchAnalytics();
     }, [projectId]);
 
-    async function fetchAnalytics() {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await fetch(`/api/code-police/analytics?projectId=${projectId}`);
-            if (!res.ok) {
-                throw new Error("Failed to fetch analytics");
-            }
-            const data = await res.json();
-            setAnalytics(data);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Unknown error");
-        } finally {
-            setLoading(false);
+    const getTrendIcon = (trend: 'increasing' | 'stable' | 'decreasing') => {
+        switch (trend) {
+            case 'increasing': return <TrendingUp className="w-4 h-4 text-green-400" />;
+            case 'decreasing': return <TrendingDown className="w-4 h-4 text-red-400" />;
+            default: return <Minus className="w-4 h-4 text-zinc-400" />;
         }
-    }
-
-    async function handleAnalyzeRepo() {
-        try {
-            const res = await fetch(`/api/code-police/analyze-repo`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ projectId })
-            });
-            if (res.ok) {
-                // Refresh analytics after analysis
-                setTimeout(fetchAnalytics, 2000);
-            }
-        } catch (err) {
-            console.error("Failed to trigger repo analysis:", err);
-        }
-    }
-
-    const severityColors = {
-        critical: "#dc2626",
-        high: "#ea580c",
-        medium: "#ca8a04",
-        low: "#2563eb",
-        info: "#6b7280"
     };
 
-    if (loading) {
+    if (isLoading) {
         return (
-            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-zinc-400">Loading analytics...</p>
+            <div className="flex flex-col items-center justify-center h-96 gap-4">
+                <div className="relative">
+                    <div className="w-16 h-16 border-4 border-zinc-800 rounded-full" />
+                    <div className="absolute inset-0 w-16 h-16 border-4 border-violet-500 rounded-full animate-spin border-t-transparent" />
                 </div>
+                <p className="text-zinc-400">Loading analytics...</p>
             </div>
         );
     }
 
-    if (error || !analytics) {
+    if (error) {
         return (
-            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-                <div className="text-center">
-                    <p className="text-red-400 mb-4">{error || "Failed to load analytics"}</p>
-                    <button
-                        onClick={fetchAnalytics}
-                        className="px-4 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg text-white"
-                    >
-                        Retry
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    const maxIssueCount = Math.max(
-        analytics.issueCounts.critical,
-        analytics.issueCounts.high,
-        analytics.issueCounts.medium,
-        analytics.issueCounts.low,
-        analytics.issueCounts.info,
-        1
-    );
-
-    return (
-        <div className="min-h-screen bg-zinc-950 text-white">
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
+            <div className="p-6 lg:p-8">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
+                    <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                    <h2 className="text-xl font-semibold text-white mb-2">Error Loading Analytics</h2>
+                    <p className="text-zinc-400 mb-4">{error}</p>
+                    <div className="flex gap-3 justify-center">
                         <Link
                             href={`/dashboard/code-police/${projectId}`}
-                            className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition-colors"
                         >
-                            <ArrowLeftIcon className="w-5 h-5" />
+                            <ArrowLeft className="w-4 h-4" />
+                            Back to Project
                         </Link>
+                        <button
+                            onClick={() => fetchAnalytics()}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg text-white transition-colors"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!analytics) return null;
+
+    return (
+        <div className="p-6 lg:p-8 space-y-8">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <Link
+                        href={`/dashboard/code-police/${projectId}`}
+                        className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-2"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to Project
+                    </Link>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-violet-500/10">
+                            <Shield className="w-6 h-6 text-violet-400" />
+                        </div>
                         <div>
-                            <h1 className="text-2xl font-bold">{analytics.projectName} Analytics</h1>
-                            <p className="text-zinc-400">{analytics.repoFullName}</p>
+                            <h1 className="text-2xl font-bold text-white">{projectName} Analytics</h1>
+                            <p className="text-zinc-400">Repository health and insights</p>
                         </div>
                     </div>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={fetchAnalytics}
-                            className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
-                        >
-                            <RefreshCwIcon className="w-4 h-4" />
-                            Refresh
-                        </button>
-                        <button
-                            onClick={handleAnalyzeRepo}
-                            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg font-medium transition-colors"
-                        >
-                            <GitBranchIcon className="w-4 h-4" />
-                            Analyze Full Repo
-                        </button>
+                </div>
+                <button
+                    onClick={() => fetchAnalytics(true)}
+                    disabled={isRefreshing}
+                    className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-zinc-300 transition-colors disabled:opacity-50"
+                >
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </button>
+            </div>
+
+            {/* Top Section: Health Score + AI Summary */}
+            <div className="grid lg:grid-cols-3 gap-6">
+                {/* Health Score Card */}
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+                    <h2 className="text-lg font-semibold text-white mb-4">Health Score</h2>
+                    <div className="flex flex-col items-center">
+                        <HealthScoreGauge
+                            score={analytics.healthScore.total}
+                            grade={analytics.healthScore.grade}
+                            size="lg"
+                        />
+                    </div>
+                    <div className="mt-6">
+                        <ScoreBreakdown components={analytics.healthScore.components} />
                     </div>
                 </div>
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-violet-500/20 rounded-lg">
-                                <TrendingUpIcon className="w-5 h-5 text-violet-400" />
-                            </div>
-                            <span className="text-zinc-400">Analysis Runs</span>
-                        </div>
-                        <div className="text-3xl font-bold">{analytics.totalAnalysisRuns}</div>
-                    </div>
+                {/* AI Insights */}
+                <div className="lg:col-span-2">
+                    <InsightPanel
+                        summary={analytics.aiInsights.summary}
+                        actions={analytics.aiInsights.topActions}
+                        cached={analytics.aiInsights.cached}
+                    />
+                </div>
+            </div>
 
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-red-500/20 rounded-lg">
-                                <AlertTriangleIcon className="w-5 h-5 text-red-400" />
-                            </div>
-                            <span className="text-zinc-400">Issues Found</span>
-                        </div>
-                        <div className="text-3xl font-bold">{analytics.totalIssuesFound}</div>
-                    </div>
+            {/* Quick Stats */}
+            <div>
+                <h2 className="text-lg font-semibold text-white mb-4">Overview</h2>
+                <MetricGrid columns={5}>
+                    <MetricCard
+                        title="Stars"
+                        value={analytics.overview.stars.toLocaleString()}
+                        icon={Star}
+                        color="yellow"
+                    />
+                    <MetricCard
+                        title="Forks"
+                        value={analytics.overview.forks.toLocaleString()}
+                        icon={GitFork}
+                        color="blue"
+                    />
+                    <MetricCard
+                        title="Open Issues"
+                        value={analytics.issues.openCount.toLocaleString()}
+                        icon={AlertTriangle}
+                        color="orange"
+                    />
+                    <MetricCard
+                        title="Open PRs"
+                        value={analytics.pullRequests.openCount.toLocaleString()}
+                        icon={GitPullRequest}
+                        color="purple"
+                    />
+                    <MetricCard
+                        title="Contributors"
+                        value={analytics.contributors.total.toLocaleString()}
+                        icon={Users}
+                        color="green"
+                    />
+                </MetricGrid>
+            </div>
 
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-green-500/20 rounded-lg">
-                                <CheckCircleIcon className="w-5 h-5 text-green-400" />
-                            </div>
-                            <span className="text-zinc-400">Issues Fixed</span>
+            {/* Activity & Languages */}
+            <div className="grid lg:grid-cols-2 gap-6">
+                {/* Activity Chart */}
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-white">Activity (90 days)</h2>
+                        <div className="flex items-center gap-2 text-sm">
+                            {getTrendIcon(analytics.activity.trend)}
+                            <span className="text-zinc-400 capitalize">{analytics.activity.trend}</span>
                         </div>
-                        <div className="text-3xl font-bold">{analytics.totalIssuesFixed}</div>
                     </div>
+                    <div className="mb-4">
+                        <span className="text-3xl font-bold text-white">
+                            {analytics.activity.commitsLast90Days}
+                        </span>
+                        <span className="text-zinc-400 ml-2">commits</span>
+                    </div>
+                    <ActivityChart
+                        data={analytics.activity.commitsByWeek}
+                        height={140}
+                        color="#8b5cf6"
+                    />
+                </div>
 
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col items-center justify-center">
-                        <span className="text-zinc-400 text-sm mb-2">Code Health</span>
-                        <CodeHealthGauge score={analytics.codeHealthScore} />
+                {/* Languages */}
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+                    <h2 className="text-lg font-semibold text-white mb-4">Languages</h2>
+                    <div className="mb-4">
+                        <span className="text-3xl font-bold text-white">
+                            {analytics.overview.primaryLanguage || 'Unknown'}
+                        </span>
+                        <span className="text-zinc-400 ml-2">primary</span>
+                    </div>
+                    <LanguageBar languages={analytics.languages} />
+                </div>
+            </div>
+
+            {/* Contributors & PR/Issues */}
+            <div className="grid lg:grid-cols-2 gap-6">
+                {/* Contributors */}
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-white">Top Contributors</h2>
+                        <div className={`flex items-center gap-2 text-sm px-2 py-1 rounded-lg ${analytics.contributors.busFactor <= 1
+                                ? 'bg-red-500/10 text-red-400'
+                                : analytics.contributors.busFactor <= 2
+                                    ? 'bg-yellow-500/10 text-yellow-400'
+                                    : 'bg-green-500/10 text-green-400'
+                            }`}>
+                            Bus Factor: {analytics.contributors.busFactor}
+                        </div>
+                    </div>
+                    <div className="space-y-3">
+                        {analytics.contributors.topContributors.slice(0, 5).map((contributor, index) => (
+                            <div key={contributor.login} className="flex items-center gap-3">
+                                <span className="text-zinc-500 text-sm w-4">{index + 1}</span>
+                                <img
+                                    src={contributor.avatar}
+                                    alt={contributor.login}
+                                    className="w-8 h-8 rounded-full"
+                                />
+                                <div className="flex-1">
+                                    <p className="text-white font-medium">{contributor.login}</p>
+                                    <p className="text-zinc-500 text-xs">{contributor.commits} commits</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-zinc-400 text-sm">{contributor.percentage}%</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Issue Breakdown */}
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                        <h2 className="text-lg font-semibold mb-6">Issue Breakdown</h2>
-                        <div className="space-y-4">
-                            <IssueBar label="Critical" count={analytics.issueCounts.critical} color={severityColors.critical} maxCount={maxIssueCount} />
-                            <IssueBar label="High" count={analytics.issueCounts.high} color={severityColors.high} maxCount={maxIssueCount} />
-                            <IssueBar label="Medium" count={analytics.issueCounts.medium} color={severityColors.medium} maxCount={maxIssueCount} />
-                            <IssueBar label="Low" count={analytics.issueCounts.low} color={severityColors.low} maxCount={maxIssueCount} />
-                            <IssueBar label="Info" count={analytics.issueCounts.info} color={severityColors.info} maxCount={maxIssueCount} />
+                {/* PR & Issue Metrics */}
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+                    <h2 className="text-lg font-semibold text-white mb-4">Workflow Metrics</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-zinc-800/50 rounded-xl">
+                            <div className="flex items-center gap-2 mb-2">
+                                <GitPullRequest className="w-4 h-4 text-purple-400" />
+                                <span className="text-zinc-400 text-sm">PR Merge Time</span>
+                            </div>
+                            <p className="text-2xl font-bold text-white">
+                                {analytics.pullRequests.avgMergeTimeHours > 0
+                                    ? `${analytics.pullRequests.avgMergeTimeHours}h`
+                                    : 'N/A'
+                                }
+                            </p>
+                            <p className="text-zinc-500 text-xs mt-1">avg time to merge</p>
+                        </div>
+                        <div className="p-4 bg-zinc-800/50 rounded-xl">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Clock className="w-4 h-4 text-blue-400" />
+                                <span className="text-zinc-400 text-sm">Review Time</span>
+                            </div>
+                            <p className="text-2xl font-bold text-white">
+                                {analytics.pullRequests.avgReviewTimeHours > 0
+                                    ? `${analytics.pullRequests.avgReviewTimeHours}h`
+                                    : 'N/A'
+                                }
+                            </p>
+                            <p className="text-zinc-500 text-xs mt-1">avg first review</p>
+                        </div>
+                        <div className="p-4 bg-zinc-800/50 rounded-xl">
+                            <div className="flex items-center gap-2 mb-2">
+                                <AlertTriangle className="w-4 h-4 text-orange-400" />
+                                <span className="text-zinc-400 text-sm">Issue Close Time</span>
+                            </div>
+                            <p className="text-2xl font-bold text-white">
+                                {analytics.issues.avgCloseTimeDays > 0
+                                    ? `${analytics.issues.avgCloseTimeDays}d`
+                                    : 'N/A'
+                                }
+                            </p>
+                            <p className="text-zinc-500 text-xs mt-1">avg days to close</p>
+                        </div>
+                        <div className="p-4 bg-zinc-800/50 rounded-xl">
+                            <div className="flex items-center gap-2 mb-2">
+                                <GitPullRequest className="w-4 h-4 text-green-400" />
+                                <span className="text-zinc-400 text-sm">PRs Merged (30d)</span>
+                            </div>
+                            <p className="text-2xl font-bold text-white">
+                                {analytics.pullRequests.mergedLast30Days}
+                            </p>
+                            <p className="text-zinc-500 text-xs mt-1">last 30 days</p>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    {/* Issue Trends */}
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                        <h2 className="text-lg font-semibold mb-6">Issue Trends (Last 30 Days)</h2>
-                        <TrendChart trends={analytics.issueTrends} />
-                    </div>
-
-                    {/* Top Problematic Files */}
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                        <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                            <FileCodeIcon className="w-5 h-5 text-orange-400" />
-                            Top Problematic Files
+            {/* Documentation & Testing */}
+            <div className="grid lg:grid-cols-2 gap-6">
+                {/* Documentation */}
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <BookOpen className="w-5 h-5 text-blue-400" />
+                            Documentation
                         </h2>
-                        {analytics.topProblematicFiles.length === 0 ? (
-                            <div className="text-zinc-500 text-center py-8">
-                                No files with issues found
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {analytics.topProblematicFiles.slice(0, 5).map((file, i) => (
-                                    <div key={file.filePath} className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-zinc-500 text-sm w-5">#{i + 1}</span>
-                                            <div>
-                                                <div className="text-sm font-mono text-zinc-200 truncate max-w-[200px]">
-                                                    {file.filePath.split("/").pop()}
-                                                </div>
-                                                <div className="text-xs text-zinc-500 truncate max-w-[200px]">
-                                                    {file.filePath}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {file.criticalCount > 0 && (
-                                                <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">
-                                                    {file.criticalCount} critical
-                                                </span>
-                                            )}
-                                            {file.highCount > 0 && (
-                                                <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded">
-                                                    {file.highCount} high
-                                                </span>
-                                            )}
-                                            <span className="text-zinc-400 text-sm">{file.issueCount} total</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                        <span className={`px-2 py-1 rounded-lg text-sm font-medium ${analytics.documentation.score >= 70
+                                ? 'bg-green-500/10 text-green-400'
+                                : analytics.documentation.score >= 40
+                                    ? 'bg-yellow-500/10 text-yellow-400'
+                                    : 'bg-red-500/10 text-red-400'
+                            }`}>
+                            {analytics.documentation.score}/100
+                        </span>
                     </div>
-
-                    {/* Issues by Category */}
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-                        <h2 className="text-lg font-semibold mb-6">Issues by Category</h2>
-                        {Object.keys(analytics.issuesByCategory).length === 0 ? (
-                            <div className="text-zinc-500 text-center py-8">
-                                No category data available
+                    <div className="space-y-3">
+                        {[
+                            { label: 'README', has: analytics.documentation.hasReadme },
+                            { label: 'CONTRIBUTING', has: analytics.documentation.hasContributing },
+                            { label: 'SECURITY', has: analytics.documentation.hasSecurity },
+                            { label: 'LICENSE', has: analytics.documentation.hasLicense, extra: analytics.documentation.licenseType },
+                            { label: 'CODE_OF_CONDUCT', has: analytics.documentation.hasCodeOfConduct },
+                            { label: 'Docs directory', has: analytics.documentation.hasDocs },
+                        ].map((doc) => (
+                            <div key={doc.label} className="flex items-center justify-between">
+                                <span className="text-zinc-300">{doc.label}</span>
+                                <div className="flex items-center gap-2">
+                                    {doc.extra && (
+                                        <span className="text-xs text-zinc-500">{doc.extra}</span>
+                                    )}
+                                    <span className={doc.has ? 'text-green-400' : 'text-red-400'}>
+                                        {doc.has ? '✓' : '✗'}
+                                    </span>
+                                </div>
                             </div>
-                        ) : (
-                            <div className="flex flex-wrap gap-3">
-                                {Object.entries(analytics.issuesByCategory)
-                                    .sort((a, b) => b[1] - a[1])
-                                    .map(([category, count]) => (
-                                        <div
-                                            key={category}
-                                            className="px-4 py-2 bg-zinc-800 rounded-lg border border-zinc-700"
+                        ))}
+                    </div>
+                </div>
+
+                {/* Testing */}
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <TestTube className="w-5 h-5 text-emerald-400" />
+                            Testing
+                        </h2>
+                        <span className={`px-2 py-1 rounded-lg text-sm font-medium ${analytics.testing.hasTests
+                                ? 'bg-green-500/10 text-green-400'
+                                : 'bg-red-500/10 text-red-400'
+                            }`}>
+                            {analytics.testing.hasTests ? 'Tests Found' : 'No Tests'}
+                        </span>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-zinc-400">Test Files</span>
+                            <span className="text-white font-medium">{analytics.testing.testFileCount}</span>
+                        </div>
+                        {analytics.testing.testFrameworks.length > 0 && (
+                            <div>
+                                <span className="text-zinc-400 text-sm">Frameworks</span>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {analytics.testing.testFrameworks.map((fw) => (
+                                        <span
+                                            key={fw}
+                                            className="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-sm rounded-lg"
                                         >
-                                            <span className="text-zinc-400 capitalize">{category}</span>
-                                            <span className="ml-2 font-bold text-white">{count}</span>
-                                        </div>
+                                            {fw}
+                                        </span>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+                        {analytics.testing.testDirectories.length > 0 && (
+                            <div>
+                                <span className="text-zinc-400 text-sm">Test Directories</span>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                    {analytics.testing.testDirectories.map((dir) => (
+                                        <span
+                                            key={dir}
+                                            className="px-2 py-1 bg-zinc-800 text-zinc-300 text-sm rounded-lg font-mono"
+                                        >
+                                            /{dir}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
                 </div>
+            </div>
 
-                {/* Footer Info */}
-                <div className="mt-8 text-center text-sm text-zinc-500">
-                    {analytics.firstAnalysis && analytics.lastAnalysis && (
-                        <p>
-                            Data from {new Date(analytics.firstAnalysis).toLocaleDateString()} to {new Date(analytics.lastAnalysis).toLocaleDateString()}
-                        </p>
-                    )}
-                </div>
+            {/* Footer */}
+            <div className="text-center text-zinc-500 text-sm">
+                Last updated: {new Date(analytics.aiInsights.generatedAt).toLocaleString()}
+                {analytics.aiInsights.cached && ' (cached)'}
             </div>
         </div>
     );

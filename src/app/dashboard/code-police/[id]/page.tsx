@@ -24,6 +24,7 @@ import {
   Wrench,
   ExternalLink,
   Code,
+  BarChart3,
 } from "lucide-react";
 
 import { ProjectSettings } from "@/components/code-police/ProjectSettings";
@@ -417,6 +418,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href={`/dashboard/code-police/${projectId}/analytics`}
+              className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Analytics
+            </Link>
             <button
               onClick={runAnalysis}
               disabled={isAnalyzing || project.status !== 'active'}
