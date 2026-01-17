@@ -317,7 +317,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                                 <span className="text-sm font-normal text-zinc-400 ml-1">PRs/week</span>
                             </div>
                             <div className={`text-sm mt-1 ${analytics.founderMetrics.deliveryVelocityTrend === 'improving' ? 'text-green-400' :
-                                    analytics.founderMetrics.deliveryVelocityTrend === 'declining' ? 'text-red-400' : 'text-zinc-400'
+                                analytics.founderMetrics.deliveryVelocityTrend === 'declining' ? 'text-red-400' : 'text-zinc-400'
                                 }`}>
                                 {analytics.founderMetrics.deliveryVelocityTrend === 'improving' && '↗ Improving'}
                                 {analytics.founderMetrics.deliveryVelocityTrend === 'declining' && '↘ Declining'}
@@ -329,7 +329,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
                             <div className="text-sm text-zinc-400 mb-1">Tech Debt Score</div>
                             <div className={`text-2xl font-bold ${analytics.founderMetrics.techDebtScore >= 70 ? 'text-green-400' :
-                                    analytics.founderMetrics.techDebtScore >= 40 ? 'text-yellow-400' : 'text-red-400'
+                                analytics.founderMetrics.techDebtScore >= 40 ? 'text-yellow-400' : 'text-red-400'
                                 }`}>
                                 {analytics.founderMetrics.techDebtScore}
                                 <span className="text-sm font-normal text-zinc-400 ml-1">/100</span>
@@ -341,7 +341,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
                             <div className="text-sm text-zinc-400 mb-1">Scale Readiness</div>
                             <div className={`text-2xl font-bold ${analytics.founderMetrics.scaleReadinessScore >= 70 ? 'text-green-400' :
-                                    analytics.founderMetrics.scaleReadinessScore >= 40 ? 'text-yellow-400' : 'text-red-400'
+                                analytics.founderMetrics.scaleReadinessScore >= 40 ? 'text-yellow-400' : 'text-red-400'
                                 }`}>
                                 {analytics.founderMetrics.scaleReadinessScore}
                                 <span className="text-sm font-normal text-zinc-400 ml-1">/100</span>
@@ -375,8 +375,8 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                                 <div
                                     key={idx}
                                     className={`flex items-center gap-3 p-3 rounded-lg border ${item.passed
-                                            ? 'bg-green-500/5 border-green-500/20'
-                                            : 'bg-zinc-800/50 border-zinc-700/50'
+                                        ? 'bg-green-500/5 border-green-500/20'
+                                        : 'bg-zinc-800/50 border-zinc-700/50'
                                         }`}
                                 >
                                     <span className={`text-lg ${item.passed ? 'text-green-400' : 'text-zinc-500'}`}>
@@ -387,7 +387,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                                             {item.item}
                                         </div>
                                         <div className={`text-xs ${item.importance === 'critical' ? 'text-red-400' :
-                                                item.importance === 'important' ? 'text-yellow-400' : 'text-zinc-500'
+                                            item.importance === 'important' ? 'text-yellow-400' : 'text-zinc-500'
                                             }`}>
                                             {item.importance}
                                         </div>
@@ -632,7 +632,7 @@ export default function AnalyticsPage({ params }: { params: Promise<{ id: string
                         {analytics.aiInsights.cached && ' (cached for 7 days)'}
                     </>
                 ) : (
-                    <>Data updated: {new Date().toLocaleString()}</>
+                    <>Deterministic analytics • No AI tokens used</>
                 )}
             </div>
         </div>

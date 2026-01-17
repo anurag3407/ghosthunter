@@ -434,21 +434,32 @@ async function handlePushEvent(
 
     // Send email notification if configured
     const notificationPrefs = project.notificationPrefs as { emailOnPush?: boolean; additionalEmails?: string[] } | undefined;
+    console.log("[Push Event] Notification prefs:", JSON.stringify(notificationPrefs));
+    console.log("[Push Event] emailOnPush enabled:", notificationPrefs?.emailOnPush);
+
     if (notificationPrefs?.emailOnPush) {
       // Get user email from Clerk first (works for Google and GitHub auth)
       const emailInfo = await getUserEmail(project.userId);
+      console.log("[Push Event] Email info from Clerk:", JSON.stringify(emailInfo));
       let userEmail = emailInfo.email;
 
       // Fallback: check Firestore for legacy users
       if (!userEmail) {
         const userData = await adminDb.collection("users").doc(project.userId).get();
         userEmail = userData.data()?.email;
+        console.log("[Push Event] Email from Firestore fallback:", userEmail);
       }
 
       const recipients = [userEmail, ...(notificationPrefs.additionalEmails || [])].filter((e): e is string => !!e);
+      console.log("[Push Event] Email recipients:", recipients);
+
+      if (recipients.length === 0) {
+        console.warn("[Push Event] No email recipients found, skipping email");
+      }
 
       for (const email of recipients) {
-        await sendAnalysisReport({
+        console.log("[Push Event] Sending email to:", email);
+        const emailResult = await sendAnalysisReport({
           to: email,
           run: {
             id: analysisRef.id,
@@ -469,9 +480,12 @@ async function handlePushEvent(
           repoName: `${owner}/${repo}`,
           commitUrl: `https://github.com/${owner}/${repo}/commit/${commitSha}`,
         });
+        console.log("[Push Event] Email send result:", JSON.stringify(emailResult));
       }
 
       await analysisRef.update({ emailStatus: "sent" });
+    } else {
+      console.log("[Push Event] Email notifications disabled for this project");
     }
 
     // Auto-fix: Generate fixes and create PR if enabled
