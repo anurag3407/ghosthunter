@@ -139,9 +139,22 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }
   };
 
+  // Initial fetch
   useEffect(() => {
     fetchData();
   }, [projectId]);
+
+  // Auto-polling: refresh data every 30 seconds to see new webhook results
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Only auto-fetch if not currently refreshing or analyzing
+      if (!isRefreshing && !isAnalyzing) {
+        fetchData(false); // Silent refresh (no loading indicator)
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [projectId, isRefreshing, isAnalyzing]);
 
   // Update project settings
   const handleUpdateProject = async (updates: Partial<Project>) => {
@@ -494,7 +507,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Analysis Runs */}
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-white">Analysis History</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">Analysis History</h2>
+          <span className="flex items-center gap-2 text-xs text-zinc-500">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            Auto-refresh every 30s
+          </span>
+        </div>
 
         {runs.length === 0 ? (
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 text-center">
