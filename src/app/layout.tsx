@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   description: "AI-powered platform for startups. Code review, pitch decks, equity distribution, and database management - all in one place.",
   keywords: ["startup", "AI agents", "code review", "pitch deck", "equity", "database"],
   authors: [{ name: "GhostFounder Team" }],
+  icons: {
+    icon: "/ghostfounder.png",
+    shortcut: "/ghostfounder.png",
+    apple: "/ghostfounder.png",
+  },
   openGraph: {
     title: "GhostFounder - Build Startups at Warp Speed",
     description: "AI-powered platform for startups. Code review, pitch decks, equity distribution, and database management.",
@@ -62,8 +67,8 @@ export default function RootLayout({
           <Providers>
             {children}
           </Providers>
-          <Toaster 
-            position="bottom-right" 
+          <Toaster
+            position="bottom-right"
             theme="dark"
             richColors
           />

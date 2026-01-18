@@ -157,15 +157,18 @@ export async function POST(request: NextRequest) {
         assistantMessage += `\n\n**Reason:** ${agentResponse.warnings.join(", ")}`;
       }
     } else if (agentResponse.type === "error") {
-      assistantMessage = `❌ **Error**\n\n${agentResponse.content}`;
+      assistantMessage = `❌ **Error**\n\n${agentResponse.content || "An unexpected error occurred. Please try rephrasing your question."}`;
     } else if (agentResponse.type === "clarification") {
-      assistantMessage = agentResponse.content;
+      assistantMessage = agentResponse.content || "I'd be happy to help! Could you please provide more details about what you're looking for?";
     } else {
       // Query type - generate AND execute the query
-      assistantMessage = agentResponse.explanation || agentResponse.content;
+      assistantMessage = agentResponse.explanation || agentResponse.content || "";
 
       if (agentResponse.query) {
         const queryLang = connection.type === "mongodb" ? "json" : "sql";
+        if (!assistantMessage) {
+          assistantMessage = "Here's the query for your request:";
+        }
         assistantMessage += `\n\n**Generated Query:**\n\`\`\`${queryLang}\n${agentResponse.query}\n\`\`\``;
 
         // Execute the query
@@ -178,6 +181,14 @@ export async function POST(request: NextRequest) {
         } catch (execError) {
           assistantMessage += `\n\n❌ **Execution Error**: ${execError instanceof Error ? execError.message : "Failed to execute query"}`;
         }
+      } else {
+        // No query was generated - provide helpful feedback
+        if (!assistantMessage) {
+          assistantMessage = "I couldn't generate a query for that request. This might be because:\n\n" +
+            "- The collection/table you're asking about doesn't exist in this database\n" +
+            "- The request wasn't specific enough\n\n" +
+            "**Tip:** Try asking about specific collections that exist in your database, or ask me to 'show all collections' first!";
+        }
       }
 
       if (agentResponse.assumptions?.length) {
@@ -189,8 +200,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Add assistant message to conversation
-    await addMessage(conversationId, "assistant", assistantMessage, agentResponse.query || undefined);
+    // Add assistant message to conversation (including results for persistence)
+    await addMessage(conversationId, "assistant", assistantMessage, agentResponse.query || undefined, queryResults || undefined);
 
     // Update conversation title if it's the first message
     if (previousMessages.length <= 1) {

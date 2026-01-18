@@ -82,31 +82,52 @@ CRITICAL RULES:
 6. If the user's request is unclear, ask for clarification
 7. NEVER ask the user what collection or table their data is in - use the schema and sample data provided
 8. Use the SAMPLE DATA section to understand the actual data structure and values
+9. For conversational questions (greetings, how are you, etc.), respond naturally without generating a query
+10. Always try to be helpful - if you can answer based on the schema, do so
+11. If the user asks about a collection/table that doesn't exist in the schema, tell them it doesn't exist and list what collections/tables ARE available
+12. IMPORTANT: Always provide a non-empty content/explanation in your response
+13. WHEN THE USER ASKS FOR DATA (e.g., "show me users", "list all X", "get the names of Y"), ALWAYS generate a query - don't just describe what you would do
+14. If a collection/table exists in the schema, YOU MUST generate a query for it when asked
 
-RESPONSE FORMAT (strict JSON):
+RESPONSE FORMAT (JSON):
+For database queries:
 {
-  "type": "query" | "clarification",
-  "content": "your explanation or clarification question",
-  "query": "the generated query (null if clarification needed)",
-  "explanation": "what this query does",
-  "warnings": ["list of warnings"],
-  "assumptions": ["list of assumptions made"]
+  "type": "query",
+  "content": "Brief explanation of what you're doing",
+  "query": "the generated query",
+  "explanation": "Detailed explanation of what this query does and what results to expect",
+  "warnings": ["list of warnings if any"],
+  "assumptions": ["list of assumptions made if any"]
+}
+
+For clarification needed:
+{
+  "type": "clarification",
+  "content": "Your clarifying question or helpful response",
+  "query": null
+}
+
+For conversational/general responses:
+{
+  "type": "response",
+  "content": "Your helpful response about the database, schema, or general assistance",
+  "query": null
 }`;
 
   // Build the data context section with schema and samples
   const buildDataContext = (schemaStr: string, samples?: string) => {
     if (!schemaStr && !samples) {
-      return `DATABASE INFO: Schema detection encountered an issue. Based on the user's question, infer the most likely collection/table name and generate a query. Include this assumption in your response.`;
+      return `DATABASE INFO: Schema is being loaded. Based on common database patterns and the user's question, try to provide helpful guidance. If the user is asking about their data, suggest they wait a moment for schema detection or ask them to describe their database structure.`;
     }
 
     let context = "";
 
     if (schemaStr && schemaStr.trim().length > 0) {
-      context += `SCHEMA OVERVIEW:\n${schemaStr}\n\n`;
+      context += `AVAILABLE SCHEMA:\n${schemaStr}\n\n`;
     }
 
     if (samples && samples.trim().length > 0) {
-      context += `DATABASE CONTENT (Sample Data):\n${samples}`;
+      context += `SAMPLE DATA FROM DATABASE:\n${samples}`;
     }
 
     return context;
@@ -115,18 +136,21 @@ RESPONSE FORMAT (strict JSON):
   const dataContext = buildDataContext(schema, sampleDataContext);
 
   if (type === "mongodb") {
-    return `You are QueryMind, an expert MongoDB assistant. You help users query their MongoDB database using natural language.
+    return `You are QueryMind, a friendly and expert MongoDB assistant. You help users explore and query their MongoDB database using natural language.
+
+Your personality: Be helpful, clear, and conversational. Explain things in simple terms.
 
 ${dataContext}
 
 MONGODB QUERY FORMAT:
-Generate queries as valid JSON objects with this structure:
+When generating queries, use this JSON structure:
 {
   "collection": "collectionName",
   "operation": "find" | "aggregate" | "count" | "distinct",
   "filter": {...}, // for find/count
   "pipeline": [...], // for aggregate
-  "field": "fieldName" // for distinct
+  "field": "fieldName", // for distinct
+  "options": { "limit": 100 } // optional
 }
 
 ${baseRules}`;
@@ -135,7 +159,9 @@ ${baseRules}`;
   // PostgreSQL/Supabase prompt
   const dbName = type === "supabase" ? "Supabase (PostgreSQL)" : "PostgreSQL";
 
-  return `You are QueryMind, an expert ${dbName} assistant. You help users query their database using natural language.
+  return `You are QueryMind, a friendly and expert ${dbName} assistant. You help users explore and query their database using natural language.
+
+Your personality: Be helpful, clear, and conversational. Explain things in simple terms.
 
 ${dataContext}
 
@@ -143,7 +169,7 @@ SQL SYNTAX RULES:
 - Use proper PostgreSQL syntax
 - Quote identifiers with double quotes if they contain special characters
 - Use parameterized queries format ($1, $2) for any user-provided values
-- Always include appropriate LIMIT clauses for large result sets
+- Always include appropriate LIMIT clauses for large result sets (default to LIMIT 100)
 
 ${baseRules}`;
 }
@@ -170,40 +196,122 @@ function validateQuery(query: string, type: DetectedDatabaseType): {
 }
 
 /**
- * Parse LLM response to structured format
+ * Parse LLM response to structured format with improved fallback handling
  */
 function parseAgentResponse(responseText: string): AgentResponse {
+  // Clean up the response text
+  let cleanedText = responseText.trim();
+
   // Try to extract JSON from markdown code blocks
-  const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  const jsonStr = jsonMatch ? jsonMatch[1] : responseText;
+  const jsonMatch = cleanedText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    cleanedText = jsonMatch[1].trim();
+  }
 
-  try {
-    const parsed = JSON.parse(jsonStr.trim());
+  // Try multiple JSON extraction strategies
+  const jsonStrategies = [
+    () => cleanedText, // Direct parse
+    () => cleanedText.replace(/^[^{]*/, '').replace(/[^}]*$/, ''), // Extract first JSON object
+    () => {
+      // Find JSON object boundaries
+      const start = cleanedText.indexOf('{');
+      const end = cleanedText.lastIndexOf('}');
+      if (start !== -1 && end !== -1 && end > start) {
+        return cleanedText.substring(start, end + 1);
+      }
+      return null;
+    },
+  ];
 
-    // Ensure query is always a string (MongoDB queries might be objects)
-    let queryString: string | undefined;
-    if (parsed.query !== undefined && parsed.query !== null) {
-      queryString = typeof parsed.query === "string"
-        ? parsed.query
-        : JSON.stringify(parsed.query, null, 2);
+  for (const strategy of jsonStrategies) {
+    try {
+      const jsonStr = strategy();
+      if (!jsonStr) continue;
+
+      const parsed = JSON.parse(jsonStr);
+
+      // Ensure query is always a string (MongoDB queries might be objects)
+      let queryString: string | undefined;
+      if (parsed.query !== undefined && parsed.query !== null) {
+        queryString = typeof parsed.query === "string"
+          ? parsed.query
+          : JSON.stringify(parsed.query, null, 2);
+      }
+
+      // Map 'response' type to 'clarification' for consistency
+      let responseType = parsed.type === 'response' ? 'clarification' : (parsed.type || 'query');
+
+      // If type is 'query' but no query was actually generated, treat as clarification
+      if (responseType === 'query' && !queryString) {
+        responseType = 'clarification';
+      }
+
+      // Ensure we have meaningful content
+      const content = parsed.content || parsed.explanation || parsed.message || "";
+
+      // If we have no content and no query, this is a failed response - try to use the raw text
+      if (!content && !queryString) {
+        console.log("[Agent] Parsed response has no content or query, falling back to raw text");
+        continue; // Try next strategy
+      }
+
+      return {
+        type: responseType as "query" | "clarification" | "error" | "blocked",
+        content,
+        query: queryString,
+        explanation: parsed.explanation || parsed.content,
+        warnings: parsed.warnings || [],
+        assumptions: parsed.assumptions || [],
+      };
+    } catch {
+      // Try next strategy
+      continue;
     }
+  }
 
+  // Fallback: If all JSON parsing fails, create a helpful response from raw text
+  // Check if the response looks like an error
+  if (responseText.toLowerCase().includes('error') || responseText.toLowerCase().includes('sorry')) {
     return {
-      type: parsed.type || "query",
-      content: parsed.content || parsed.explanation || "",
-      query: queryString,
-      explanation: parsed.explanation,
-      warnings: parsed.warnings || [],
-      assumptions: parsed.assumptions || [],
-    };
-  } catch {
-    // If JSON parsing fails, try to extract useful info
-    return {
-      type: "clarification",
+      type: "error",
       content: responseText,
-      warnings: ["Response was not in expected JSON format"],
+      warnings: [],
     };
   }
+
+  // Check if response contains SQL or MongoDB query patterns
+  const sqlMatch = responseText.match(/```sql\s*([\s\S]*?)\s*```/);
+  const mongoMatch = responseText.match(/```(?:json|javascript)?\s*(\{[\s\S]*?"collection"[\s\S]*?\})\s*```/);
+
+  if (sqlMatch) {
+    return {
+      type: "query",
+      content: responseText.replace(sqlMatch[0], '').trim() || "Here's the query for your request:",
+      query: sqlMatch[1].trim(),
+      explanation: responseText.replace(sqlMatch[0], '').trim(),
+      warnings: [],
+      assumptions: [],
+    };
+  }
+
+  if (mongoMatch) {
+    return {
+      type: "query",
+      content: responseText.replace(mongoMatch[0], '').trim() || "Here's the query for your request:",
+      query: mongoMatch[1].trim(),
+      explanation: responseText.replace(mongoMatch[0], '').trim(),
+      warnings: [],
+      assumptions: [],
+    };
+  }
+
+  // Default: treat as a conversational response
+  return {
+    type: "clarification",
+    content: responseText,
+    warnings: [],
+    assumptions: [],
+  };
 }
 
 /**
@@ -371,8 +479,14 @@ export async function generateQueryResponseCached(
       ? response.content
       : JSON.stringify(response.content);
 
+    // Log raw AI response for debugging
+    console.log(`[Agent] Raw AI response (first 1000 chars): ${responseText.substring(0, 1000)}`);
+
     // Parse response
     const agentResponse = parseAgentResponse(responseText);
+
+    // Log parsed response for debugging
+    console.log(`[Agent] Parsed response - type: ${agentResponse.type}, hasQuery: ${!!agentResponse.query}, contentLength: ${agentResponse.content?.length || 0}`);
 
     // Validate query safety if a query was generated
     if (agentResponse.query) {

@@ -9,13 +9,12 @@ import {
   Loader2,
   User,
   Bot,
-  Copy,
-  Check,
   Plus,
   MessageSquare,
   Trash2,
   ChevronLeft,
 } from "lucide-react";
+import { DatabaseMessage } from "@/components/ui/database-message";
 
 interface Message {
   id: string;
@@ -24,13 +23,6 @@ interface Message {
   query?: string | Record<string, unknown>;
   results?: Record<string, unknown>[];
   timestamp: Date;
-}
-
-// Helper to safely convert query to string for rendering
-function stringifyQuery(query: string | Record<string, unknown> | undefined): string {
-  if (!query) return "";
-  if (typeof query === "string") return query;
-  return JSON.stringify(query, null, 2);
 }
 
 interface Conversation {
@@ -48,7 +40,6 @@ export default function DatabaseChatPage({ params }: { params: Promise<{ id: str
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -200,8 +191,9 @@ export default function DatabaseChatPage({ params }: { params: Promise<{ id: str
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.message || "Sorry, I encountered an error.",
+        content: data.message || "I'm here to help! Ask me anything about your database.",
         query: data.query,
+        results: data.results,
         timestamp: new Date(),
       };
 
@@ -231,19 +223,14 @@ export default function DatabaseChatPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
+  // Note: handleCopy is now handled by the DatabaseMessage component
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex">
+    <div className="h-[calc(100vh-4rem-5rem)] flex">
       {/* Sidebar - Conversations */}
       <div
-        className={`${
-          showSidebar ? "w-64" : "w-0"
-        } transition-all duration-200 border-r border-zinc-800 flex flex-col bg-zinc-950 overflow-hidden`}
+        className={`${showSidebar ? "w-64" : "w-0"
+          } transition-all duration-200 border-r border-zinc-800 flex flex-col bg-zinc-950 overflow-hidden`}
       >
         <div className="p-3 border-b border-zinc-800">
           <button
@@ -266,11 +253,10 @@ export default function DatabaseChatPage({ params }: { params: Promise<{ id: str
             conversations.map((conv) => (
               <div
                 key={conv.id}
-                className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
-                  activeConversationId === conv.id
-                    ? "bg-zinc-800"
-                    : "hover:bg-zinc-800/50"
-                }`}
+                className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${activeConversationId === conv.id
+                  ? "bg-zinc-800"
+                  : "hover:bg-zinc-800/50"
+                  }`}
                 onClick={() => setActiveConversationId(conv.id)}
               >
                 <MessageSquare className="w-4 h-4 text-zinc-500 flex-shrink-0" />
@@ -353,45 +339,17 @@ export default function DatabaseChatPage({ params }: { params: Promise<{ id: str
                 className={`flex gap-3 ${message.role === "user" ? "justify-end" : ""}`}
               >
                 {message.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0 mt-1">
                     <Bot className="w-4 h-4 text-green-400" />
                   </div>
                 )}
-                <div
-                  className={`max-w-[80%] ${
-                    message.role === "user"
-                      ? "bg-green-500 text-white rounded-2xl rounded-br-md px-4 py-2"
-                      : "space-y-3"
-                  }`}
-                >
-                  {message.role === "user" ? (
-                    <p>{message.content}</p>
-                  ) : (
-                    <>
-                      <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl rounded-tl-md p-4">
-                        <p className="text-zinc-300 whitespace-pre-wrap">{message.content}</p>
-                      </div>
-
-                      {message.query && (
-                        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-medium text-zinc-500">Generated Query</span>
-                            <button
-                              onClick={() => handleCopy(stringifyQuery(message.query), message.id + "-query")}
-                              className="text-zinc-400 hover:text-white"
-                            >
-                              {copiedId === message.id + "-query" ? (
-                                <Check className="w-4 h-4 text-green-400" />
-                              ) : (
-                                <Copy className="w-4 h-4" />
-                              )}
-                            </button>
-                          </div>
-                          <code className="text-sm text-green-400 font-mono whitespace-pre-wrap">{stringifyQuery(message.query)}</code>
-                        </div>
-                      )}
-                    </>
-                  )}
+                <div className={message.role === "user" ? "max-w-[80%]" : "max-w-[85%] flex-1"}>
+                  <DatabaseMessage
+                    content={message.content}
+                    query={message.query}
+                    results={message.results}
+                    isUser={message.role === "user"}
+                  />
                 </div>
                 {message.role === "user" && (
                   <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center flex-shrink-0">
