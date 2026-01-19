@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { notifyEquityMint } from "@/lib/notifications";
 
 /**
  * GET /api/equity/projects
@@ -9,7 +10,7 @@ import { getAdminDb } from "@/lib/firebase/admin";
 export async function GET() {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -55,16 +56,16 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
-    const { 
-      name, 
-      symbol, 
-      contractAddress, 
+    const {
+      name,
+      symbol,
+      contractAddress,
       totalSupply,
       githubRepoId,
       githubRepoFullName,
@@ -93,8 +94,8 @@ export async function POST(request: Request) {
     }
 
     // Normalize githubRepoId to number for consistent querying
-    const normalizedRepoId = typeof githubRepoId === 'string' 
-      ? parseInt(githubRepoId, 10) 
+    const normalizedRepoId = typeof githubRepoId === 'string'
+      ? parseInt(githubRepoId, 10)
       : githubRepoId;
 
     // Check if tokens have already been minted for this repository
@@ -129,7 +130,16 @@ export async function POST(request: Request) {
 
     await projectRef.set(project);
 
-    return NextResponse.json({ 
+    // Create in-app notification for token mint
+    await notifyEquityMint(
+      userId,
+      name,
+      symbol,
+      totalSupply || "1000000",
+      contractAddress
+    );
+
+    return NextResponse.json({
       project: {
         ...project,
         createdAt: project.createdAt.toISOString(),

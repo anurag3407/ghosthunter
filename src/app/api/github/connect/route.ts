@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { Octokit } from "@octokit/rest";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { notifyRepoConnected } from "@/lib/notifications";
 import crypto from "crypto";
 
 /**
@@ -11,7 +12,7 @@ import crypto from "crypto";
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Get GitHub OAuth token from Clerk
     const clerk = await clerkClient();
     let githubToken: string | null = null;
-    
+
     try {
       const tokens = await clerk.users.getUserOauthAccessToken(userId, "github");
       if (tokens.data && tokens.data.length > 0) {
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Create webhook on GitHub
     const octokit = new Octokit({ auth: githubToken });
-    
+
     let webhookId: number | null = null;
     try {
       const webhook = await octokit.repos.createWebhook({
@@ -162,6 +163,9 @@ export async function POST(request: NextRequest) {
     console.log("[GitHub Connect] Successfully connected repository:", project.githubFullName);
     console.log("[GitHub Connect] Webhook URL:", webhookUrl);
     console.log("[GitHub Connect] Webhook ID:", webhookId);
+
+    // Create in-app notification for repo connection
+    await notifyRepoConnected(userId, project.githubFullName, project.id);
 
     return NextResponse.json({
       success: true,

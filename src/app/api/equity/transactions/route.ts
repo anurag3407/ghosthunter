@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { notifyEquityTransfer } from "@/lib/notifications";
 
 /**
  * GET /api/equity/transactions
@@ -13,7 +14,7 @@ import { getAdminDb } from "@/lib/firebase/admin";
 export async function GET(request: Request) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
     // Firestore requires composite indexes for multiple where + orderBy
     // For now, we just filter by the primary field and sort in memory
     let query: FirebaseFirestore.Query = adminDb.collection("equity_transactions");
-    
+
     if (projectId) {
       // When projectId is provided, filter by projectId only
       query = query.where("projectId", "==", projectId);
@@ -88,19 +89,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ transactions });
   } catch (error) {
     console.error("[Equity:Transactions] GET Error:", error);
-    
+
     // Check if it's a Firebase index error and provide helpful message
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     if (errorMessage.includes("index")) {
       return NextResponse.json(
-        { 
+        {
           error: "Database index required. Please deploy Firestore indexes.",
           details: errorMessage
         },
         { status: 500 }
       );
     }
-    
+
     return NextResponse.json(
       { error: "Failed to fetch transactions" },
       { status: 500 }
@@ -115,7 +116,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -157,6 +158,21 @@ export async function POST(request: Request) {
     };
 
     await transactionRef.set(transaction);
+
+    // Create in-app notification for transfer (not mint since that's handled in projects route)
+    if (type === "transfer") {
+      // Get project name for better notification
+      const projectDoc = await adminDb.collection("equity_projects").doc(projectId).get();
+      const projectName = projectDoc.data()?.name || "Unknown Project";
+
+      await notifyEquityTransfer(
+        userId,
+        projectName,
+        amount.toString(),
+        to,
+        txHash
+      );
+    }
 
     return NextResponse.json({
       transaction: {

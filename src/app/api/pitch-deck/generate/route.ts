@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { generatePitchDeck } from "@/lib/agents/pitch-deck/generator";
+import { notifyPitchDeckGenerated } from "@/lib/notifications";
 
 const LOG_PREFIX = "[PitchDeck:Generate]";
 
@@ -12,20 +13,20 @@ const LOG_PREFIX = "[PitchDeck:Generate]";
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-  
+
   console.log(`${LOG_PREFIX} ========================================`);
   console.log(`${LOG_PREFIX} [${requestId}] New generation request started`);
   console.log(`${LOG_PREFIX} [${requestId}] Timestamp: ${new Date().toISOString()}`);
-  
+
   try {
     // Check for required env vars
     console.log(`${LOG_PREFIX} [${requestId}] Checking environment variables...`);
     if (!process.env.GOOGLE_AI_API_KEY) {
       console.error(`${LOG_PREFIX} [${requestId}] ❌ GOOGLE_AI_API_KEY is not set`);
       return NextResponse.json(
-        { 
-          error: "Google AI API key not configured", 
-          details: "Please set GOOGLE_AI_API_KEY in your .env file. Get one at: https://aistudio.google.com/app/apikey" 
+        {
+          error: "Google AI API key not configured",
+          details: "Please set GOOGLE_AI_API_KEY in your .env file. Get one at: https://aistudio.google.com/app/apikey"
         },
         { status: 503 }
       );
@@ -66,9 +67,9 @@ export async function POST(request: NextRequest) {
     // Generate pitch deck using AI
     console.log(`${LOG_PREFIX} [${requestId}] Starting AI generation...`);
     const aiStartTime = Date.now();
-    
+
     const generatedDeck = await generatePitchDeck(readme, instructions);
-    
+
     const aiDuration = Date.now() - aiStartTime;
     console.log(`${LOG_PREFIX} [${requestId}] ✓ AI generation completed in ${aiDuration}ms`);
     console.log(`${LOG_PREFIX} [${requestId}] Generated deck:`);
@@ -80,14 +81,14 @@ export async function POST(request: NextRequest) {
     // Get Firestore instance
     console.log(`${LOG_PREFIX} [${requestId}] Checking Firebase configuration...`);
     const db = getAdminDb();
-    
+
     if (!db) {
       console.warn(`${LOG_PREFIX} [${requestId}] ⚠ Firebase not configured - returning temp deck`);
       const tempId = `temp-${Date.now()}`;
       const totalDuration = Date.now() - startTime;
       console.log(`${LOG_PREFIX} [${requestId}] ✓ Request completed in ${totalDuration}ms (no save)`);
       console.log(`${LOG_PREFIX} ========================================`);
-      
+
       return NextResponse.json({
         deckId: tempId,
         deck: {
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
     // Save to Firestore
     console.log(`${LOG_PREFIX} [${requestId}] Saving deck to Firestore...`);
     const saveStartTime = Date.now();
-    
+
     // Helper to remove undefined values
     function removeUndefined<T>(obj: T): T {
       if (obj === null || obj === undefined) {
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
       }
       return obj;
     }
-    
+
     const deckRef = db.collection("pitch-decks").doc();
     const deck = {
       id: deckRef.id,
@@ -153,7 +154,7 @@ export async function POST(request: NextRequest) {
 
     const cleanDeck = removeUndefined(deck);
     await deckRef.set(cleanDeck);
-    
+
     const saveDuration = Date.now() - saveStartTime;
     console.log(`${LOG_PREFIX} [${requestId}] ✓ Deck saved to Firestore in ${saveDuration}ms`);
     console.log(`${LOG_PREFIX} [${requestId}] Deck ID: ${deck.id}`);
@@ -165,6 +166,14 @@ export async function POST(request: NextRequest) {
     console.log(`${LOG_PREFIX} [${requestId}]   - Firestore save: ${saveDuration}ms`);
     console.log(`${LOG_PREFIX} [${requestId}]   - Other: ${totalDuration - aiDuration - saveDuration}ms`);
     console.log(`${LOG_PREFIX} ========================================`);
+
+    // Create in-app notification for pitch deck generation
+    await notifyPitchDeckGenerated(
+      userId,
+      deck.projectName,
+      deck.id,
+      deck.slides.length
+    );
 
     return NextResponse.json({
       deckId: deck.id,
@@ -182,13 +191,13 @@ export async function POST(request: NextRequest) {
     console.error(`${LOG_PREFIX} [${requestId}] ❌ Error after ${totalDuration}ms:`, error);
     console.error(`${LOG_PREFIX} [${requestId}] Stack trace:`, error instanceof Error ? error.stack : "No stack trace");
     console.log(`${LOG_PREFIX} ========================================`);
-    
+
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    
+
     return NextResponse.json(
-      { 
-        error: "Failed to generate pitch deck", 
-        details: errorMessage 
+      {
+        error: "Failed to generate pitch deck",
+        details: errorMessage
       },
       { status: 500 }
     );

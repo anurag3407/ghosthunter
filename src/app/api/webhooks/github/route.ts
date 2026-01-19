@@ -10,6 +10,7 @@ import { sendAnalysisReport } from "@/lib/agents/code-police/email";
 import { generateAndCreateFixPR } from "@/lib/agents/code-police/auto-fix";
 import { fetchCommit, fetchFileContent, postPRComment, formatPRComment, getDependentFiles } from "@/lib/agents/code-police/github";
 import { getUserEmail } from "@/lib/utils/clerk";
+import { notifyCodeAnalysisComplete, notifyAutoFixPRCreated } from "@/lib/notifications";
 import type { CodeIssue, IssueSeverity, ProjectStatus } from "@/types";
 
 /**
@@ -507,6 +508,14 @@ async function handlePushEvent(
       console.log("[Push Event] Email notifications disabled for this project");
     }
 
+    // Create in-app notification for analysis completion
+    await notifyCodeAnalysisComplete(
+      project.userId,
+      `${owner}/${repo}`,
+      issueCounts,
+      analysisRef.id
+    );
+
     // Auto-fix: Generate fixes and create PR if enabled
     if ((project.autoFixEnabled as boolean | undefined) && fullIssues.length > 0) {
       console.log("[Push Event] Auto-fix enabled, generating fixes...");
@@ -532,6 +541,15 @@ async function handlePushEvent(
             autoFixesGenerated: autoFixResult.fixesGenerated,
             autoFixFilesChanged: autoFixResult.filesChanged,
           });
+
+          // Create in-app notification for auto-fix PR
+          await notifyAutoFixPRCreated(
+            project.userId,
+            `${owner}/${repo}`,
+            autoFixResult.prNumber!,
+            autoFixResult.prUrl!,
+            autoFixResult.fixesGenerated
+          );
         } else {
           console.log(`[Push Event] Auto-fix did not create PR: ${autoFixResult.error}`);
           if (autoFixResult.fixesGenerated > 0) {

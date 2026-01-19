@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Check, Trash2 } from "lucide-react";
+import { Bell, Check, Trash2, Shield, Coins, Presentation, GitBranch, Wrench } from "lucide-react";
 import { NotificationCard } from "@/components/ui/notification-card";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -34,9 +34,50 @@ const formatTime = (timestamp: string) => {
     return date.toLocaleDateString();
 };
 
+// Get icon and avatar based on notification type
+const getNotificationIcon = (type: string) => {
+    switch (type) {
+        case "code_analysis":
+        case "critical_issues":
+            return Shield;
+        case "auto_fix":
+            return Wrench;
+        case "repo_connected":
+            return GitBranch;
+        case "equity_transfer":
+        case "equity_mint":
+            return Coins;
+        case "pitch_deck":
+            return Presentation;
+        default:
+            return Bell;
+    }
+};
+
+const getNotificationAvatarBg = (type: string) => {
+    switch (type) {
+        case "code_analysis":
+            return "bg-violet-500/20";
+        case "critical_issues":
+            return "bg-red-500/20";
+        case "auto_fix":
+            return "bg-blue-500/20";
+        case "repo_connected":
+            return "bg-green-500/20";
+        case "equity_transfer":
+        case "equity_mint":
+            return "bg-purple-500/20";
+        case "pitch_deck":
+            return "bg-cyan-500/20";
+        default:
+            return "bg-zinc-800";
+    }
+};
+
 export function NotificationsClient({ initialNotifications }: NotificationsClientProps) {
     const [notifications, setNotifications] = useState(initialNotifications);
     const [filter, setFilter] = useState<"all" | "unread">("all");
+    const [isMarkingAll, setIsMarkingAll] = useState(false);
 
     const filteredNotifications = filter === "unread"
         ? notifications.filter(n => !n.isRead)
@@ -45,20 +86,55 @@ export function NotificationsClient({ initialNotifications }: NotificationsClien
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
     const markAsRead = async (id: string) => {
+        // Optimistic update
         setNotifications(prev =>
             prev.map(n => n.id === id ? { ...n, isRead: true } : n)
         );
-        // TODO: Persist to Firebase
+
+        // Persist to database
+        try {
+            await fetch("/api/notifications", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ notificationId: id }),
+            });
+        } catch (error) {
+            console.error("Failed to mark notification as read:", error);
+        }
     };
 
     const markAllAsRead = async () => {
+        setIsMarkingAll(true);
+
+        // Optimistic update
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-        // TODO: Persist to Firebase
+
+        // Persist to database
+        try {
+            await fetch("/api/notifications", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ markAll: true }),
+            });
+        } catch (error) {
+            console.error("Failed to mark all as read:", error);
+        } finally {
+            setIsMarkingAll(false);
+        }
     };
 
     const deleteNotification = async (id: string) => {
+        // Optimistic update
         setNotifications(prev => prev.filter(n => n.id !== id));
-        // TODO: Delete from Firebase
+
+        // Persist to database
+        try {
+            await fetch(`/api/notifications?id=${id}`, {
+                method: "DELETE",
+            });
+        } catch (error) {
+            console.error("Failed to delete notification:", error);
+        }
     };
 
     return (
@@ -84,7 +160,8 @@ export function NotificationsClient({ initialNotifications }: NotificationsClien
                     {unreadCount > 0 && (
                         <button
                             onClick={markAllAsRead}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+                            disabled={isMarkingAll}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-50"
                         >
                             <Check className="w-3.5 h-3.5" />
                             Mark all read
@@ -98,8 +175,8 @@ export function NotificationsClient({ initialNotifications }: NotificationsClien
                 <button
                     onClick={() => setFilter("all")}
                     className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${filter === "all"
-                            ? "text-zinc-200 border-zinc-200"
-                            : "text-zinc-500 border-transparent hover:text-zinc-300"
+                        ? "text-zinc-200 border-zinc-200"
+                        : "text-zinc-500 border-transparent hover:text-zinc-300"
                         }`}
                 >
                     All
@@ -107,8 +184,8 @@ export function NotificationsClient({ initialNotifications }: NotificationsClien
                 <button
                     onClick={() => setFilter("unread")}
                     className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${filter === "unread"
-                            ? "text-zinc-200 border-zinc-200"
-                            : "text-zinc-500 border-transparent hover:text-zinc-300"
+                        ? "text-zinc-200 border-zinc-200"
+                        : "text-zinc-500 border-transparent hover:text-zinc-300"
                         }`}
                 >
                     Unread
@@ -126,26 +203,34 @@ export function NotificationsClient({ initialNotifications }: NotificationsClien
                 />
             ) : (
                 <div className="space-y-2">
-                    {filteredNotifications.map((notification) => (
-                        <div key={notification.id} className="group relative">
-                            <NotificationCard
-                                userName={notification.title}
-                                message={notification.message}
-                                timestamp={formatTime(notification.createdAt)}
-                                isRead={notification.isRead}
-                                onClick={() => markAsRead(notification.id)}
-                            />
-                            <button
-                                onClick={() => deleteNotification(notification.id)}
-                                className="absolute top-4 right-4 p-1.5 rounded text-zinc-600 hover:text-red-400 hover:bg-zinc-800/60 transition-all opacity-0 group-hover:opacity-100"
-                                aria-label="Delete notification"
-                            >
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                    ))}
+                    {filteredNotifications.map((notification) => {
+                        const Icon = getNotificationIcon(notification.type);
+                        const avatarBg = getNotificationAvatarBg(notification.type);
+
+                        return (
+                            <div key={notification.id} className="group relative">
+                                <NotificationCard
+                                    userName={notification.title}
+                                    message={notification.message}
+                                    timestamp={formatTime(notification.createdAt)}
+                                    isRead={notification.isRead}
+                                    onClick={() => markAsRead(notification.id)}
+                                    avatarFallback={<Icon className="w-4 h-4 text-zinc-400" />}
+                                    avatarClassName={avatarBg}
+                                />
+                                <button
+                                    onClick={() => deleteNotification(notification.id)}
+                                    className="absolute top-4 right-4 p-1.5 rounded text-zinc-600 hover:text-red-400 hover:bg-zinc-800/60 transition-all opacity-0 group-hover:opacity-100"
+                                    aria-label="Delete notification"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>
     );
 }
+

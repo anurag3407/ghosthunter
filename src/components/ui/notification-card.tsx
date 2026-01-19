@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 interface NotificationCardProps {
     className?: string;
     avatarUrl?: string;
-    avatarFallback?: string;
+    avatarFallback?: string | React.ReactNode;
+    avatarClassName?: string;
     isOnline?: boolean;
     userName: string;
     userRole?: string;
@@ -22,6 +23,7 @@ export function NotificationCard({
     className,
     avatarUrl,
     avatarFallback,
+    avatarClassName,
     isOnline = false,
     userName,
     userRole,
@@ -31,7 +33,9 @@ export function NotificationCard({
     onReply,
     onClick,
 }: NotificationCardProps) {
-    const initials = avatarFallback || userName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+    const initials = typeof avatarFallback === "string"
+        ? avatarFallback
+        : userName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 
     return (
         <div
@@ -45,11 +49,13 @@ export function NotificationCard({
         >
             {/* Avatar */}
             <div className="relative flex-shrink-0">
-                <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden">
+                <div className={cn("w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden", avatarClassName)}>
                     {avatarUrl ? (
                         <img src={avatarUrl} alt={userName} className="w-full h-full object-cover" />
-                    ) : (
+                    ) : typeof avatarFallback === "string" || !avatarFallback ? (
                         <span className="text-xs font-medium text-zinc-400">{initials}</span>
+                    ) : (
+                        avatarFallback
                     )}
                 </div>
                 {isOnline && (
