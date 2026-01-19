@@ -143,37 +143,29 @@ export default function HeroSection() {
           <Cover>Warp Speed </Cover>
         </motion.h1>
 
-        {/* CTA Buttons - Sleek Design */}
+        {/* CTA Buttons - Minimal Dark Design */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8"
         >
-          {/* Get Started - HoverBorderGradient Button */}
-          <HoverBorderGradient
-            containerClassName="rounded-full"
-            as={Link}
+          {/* Get Started - Primary Minimal Button */}
+          <Link
             href="/sign-up"
-            className="bg-black text-white flex items-center gap-2 px-6 py-2.5 font-semibold"
+            className="group inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-black font-medium text-sm transition-all duration-200 hover:bg-zinc-200"
           >
             <span>Get Started</span>
-            <ArrowRight className="w-4 h-4" />
-          </HoverBorderGradient>
+            <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+          </Link>
 
-          {/* How to Start - Sleek Neon Button */}
+          {/* How to Start - Secondary Minimal Button */}
           <Link
             href="#how-to-start"
-            className="group relative inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full text-white font-medium transition-all duration-300 overflow-hidden hover:scale-105"
+            className="group inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-zinc-800 text-zinc-300 font-medium text-sm transition-all duration-200 hover:border-zinc-600 hover:text-white hover:bg-zinc-900/50"
           >
-            {/* Gradient border effect */}
-            <span className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500/50 via-cyan-500/50 to-violet-500/50 p-[1px]">
-              <span className="absolute inset-[1px] rounded-full bg-black" />
-            </span>
-            {/* Glow effect on hover */}
-            <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-violet-500/20 via-cyan-500/20 to-violet-500/20 blur-sm" />
-            <Play className="relative z-10 w-4 h-4 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
-            <span className="relative z-10">How to Start</span>
+            <Play className="w-4 h-4 transition-transform duration-200 group-hover:scale-110" />
+            <span>How to Start</span>
           </Link>
         </motion.div>
       </div>
