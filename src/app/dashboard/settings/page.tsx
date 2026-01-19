@@ -30,6 +30,7 @@ import {
   ChevronRight,
   Filter,
   ShieldAlert,
+  Crown,
 } from "lucide-react";
 import { GhostfounderLoader } from "@/components/ui/ghostfounder-loader";
 
@@ -115,6 +116,13 @@ function SettingsContent() {
   const isGithubConnected = !!githubAccount;
 
   const stats = statsData?.stats;
+
+  // Fetch user's pro status
+  const { data: usageData } = useSWR<{ isPro: boolean }>(
+    "/api/user/usage",
+    fetcher
+  );
+  const isPro = usageData?.isPro ?? false;
   const memberSince = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("en-US", {
       month: "long",
@@ -152,9 +160,17 @@ function SettingsContent() {
 
           {/* User Info */}
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-white">
-              {user?.fullName || user?.username || "User"}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-white">
+                {user?.fullName || user?.username || "User"}
+              </h1>
+              {isPro && (
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 text-amber-400 text-xs font-semibold">
+                  <Crown className="w-3.5 h-3.5" />
+                  Pro
+                </span>
+              )}
+            </div>
             <p className="text-zinc-400">{user?.primaryEmailAddress?.emailAddress}</p>
             <div className="flex items-center gap-4 mt-2 text-sm text-zinc-500">
               <span className="flex items-center gap-1">
