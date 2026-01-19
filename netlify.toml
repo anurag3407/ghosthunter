@@ -1,0 +1,100 @@
+# ============================================================================
+# NETLIFY CONFIGURATION - GhostFounder
+# ============================================================================
+# Production-ready Netlify configuration for Next.js deployment
+# Docs: https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  # Build command
+  command = "npm run build:netlify"
+  # Output directory for Next.js
+  publish = ".next"
+
+# Environment variables for build
+[build.environment]
+  # Node.js version
+  NODE_VERSION = "20"
+  # Skip environment validation during build (validated at runtime)
+  SKIP_ENV_VALIDATION = "true"
+  # Disable Next.js telemetry
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# ============================================================================
+# NEXT.JS PLUGIN
+# ============================================================================
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ============================================================================
+# HEADERS - Cache Control
+# ============================================================================
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# ============================================================================
+# REDIRECTS - Image Optimization
+# ============================================================================
+[[redirects]]
+  from = "/_next/image"
+  to = "/.netlify/images"
+  status = 200
+  query = { url = ":url", w = ":width", q = ":quality" }
+
+[[redirects]]
+  from = "/_ipx/*"
+  to = "/.netlify/images"
+  status = 200
+  query = { url = ":url", w = ":width", q = ":quality" }
+
+# ============================================================================
+# FUNCTIONS CONFIGURATION
+# ============================================================================
+[functions]
+  # API routes directory
+  directory = ".netlify/functions"
+
+[functions."*"]
+  # 30 second timeout for all functions
+  timeout = 30
+
+# ============================================================================
+# CONTEXT-SPECIFIC SETTINGS
+# ============================================================================
+
+# Production context
+[context.production.environment]
+  NODE_ENV = "production"
+
+# Deploy preview context
+[context.deploy-preview.environment]
+  NODE_ENV = "production"
+
+# Branch deploy context
+[context.branch-deploy.environment]
+  NODE_ENV = "production"
