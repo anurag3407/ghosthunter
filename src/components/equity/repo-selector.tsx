@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, Check, AlertCircle, Lock, Github, Loader2 } from "lucide-react";
+import { GhostfounderLoader } from "@/components/ui/ghostfounder-loader";
 
 interface Repository {
   id: number;
@@ -74,7 +75,7 @@ export function RepoSelector({ onSelect, selectedRepo }: RepoSelectorProps) {
 
   const handleSelect = async (repo: Repository) => {
     if (mintedRepos.has(repo.id)) return;
-    
+
     const isMinted = await checkIfMinted(repo.id);
     if (!isMinted) {
       onSelect(repo);
@@ -90,8 +91,7 @@ export function RepoSelector({ onSelect, selectedRepo }: RepoSelectorProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
-        <span className="ml-3 text-zinc-400">Loading repositories...</span>
+        <GhostfounderLoader size="md" text="Loading repositories..." />
       </div>
     );
   }
@@ -146,8 +146,8 @@ export function RepoSelector({ onSelect, selectedRepo }: RepoSelectorProps) {
                   ${isSelected
                     ? "bg-purple-500/10 border-purple-500"
                     : isMinted
-                    ? "bg-zinc-900/30 border-zinc-800 opacity-60 cursor-not-allowed"
-                    : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-600"
+                      ? "bg-zinc-900/30 border-zinc-800 opacity-60 cursor-not-allowed"
+                      : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-600"
                   }
                 `}
               >

@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useWallet, SEPOLIA_CHAIN_ID_NUM } from "@/components/providers/wallet-provider";
+import { GhostfounderLoader } from "@/components/ui/ghostfounder-loader";
 
 /**
  * ============================================================================
@@ -201,7 +202,7 @@ export default function EquityPage() {
       {/* Projects List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+          <GhostfounderLoader size="lg" text="Loading projects..." />
         </div>
       ) : projects.length === 0 ? (
         <EmptyState onConnectWallet={handleConnectWallet} walletConnected={isConnected} isConnecting={isConnecting} />

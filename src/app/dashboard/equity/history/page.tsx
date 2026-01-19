@@ -15,6 +15,7 @@ import {
   Search,
 } from "lucide-react";
 import { useWallet, SEPOLIA_CHAIN_ID_NUM } from "@/components/providers/wallet-provider";
+import { GhostfounderLoader } from "@/components/ui/ghostfounder-loader";
 
 /**
  * ============================================================================
@@ -61,8 +62,8 @@ export default function HistoryPage() {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const url = filter === "all" 
-          ? "/api/equity/transactions" 
+        const url = filter === "all"
+          ? "/api/equity/transactions"
           : `/api/equity/transactions?type=${filter}`;
         const response = await fetch(url);
         if (response.ok) {
@@ -178,8 +179,8 @@ export default function HistoryPage() {
               href={tab.href}
               className={`
                 px-5 py-2.5 rounded-xl text-sm font-medium transition-all
-                ${isActive 
-                  ? "bg-zinc-800 text-white shadow-sm" 
+                ${isActive
+                  ? "bg-zinc-800 text-white shadow-sm"
                   : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
                 }
               `}
@@ -216,8 +217,8 @@ export default function HistoryPage() {
               }}
               className={`
                 px-4 py-2 rounded-lg text-sm font-medium transition-all
-                ${filter === option.id 
-                  ? "bg-zinc-800 text-white" 
+                ${filter === option.id
+                  ? "bg-zinc-800 text-white"
                   : "text-zinc-400 hover:text-white"
                 }
               `}
@@ -231,7 +232,7 @@ export default function HistoryPage() {
       {/* Transaction List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+          <GhostfounderLoader size="lg" text="Loading transactions..." />
         </div>
       ) : filteredTransactions.length === 0 ? (
         <div className="text-center py-20 bg-zinc-900/30 border border-zinc-800 rounded-3xl">
@@ -274,8 +275,8 @@ export default function HistoryPage() {
                             ${isMint
                               ? "bg-purple-500/10"
                               : isReceived
-                              ? "bg-green-500/10"
-                              : "bg-orange-500/10"
+                                ? "bg-green-500/10"
+                                : "bg-orange-500/10"
                             }
                           `}
                         >
@@ -295,8 +296,8 @@ export default function HistoryPage() {
                               {isMint
                                 ? "Minted Tokens"
                                 : isReceived
-                                ? "Received"
-                                : "Transferred"}
+                                  ? "Received"
+                                  : "Transferred"}
                             </span>
                             <span className="text-xs text-zinc-500">
                               {formatRelativeTime(tx.createdAt)}
@@ -321,9 +322,8 @@ export default function HistoryPage() {
                       <div className="flex items-center gap-6">
                         <div className="text-right">
                           <p
-                            className={`text-xl font-bold ${
-                              isReceived ? "text-green-400" : isSent ? "text-orange-400" : "text-white"
-                            }`}
+                            className={`text-xl font-bold ${isReceived ? "text-green-400" : isSent ? "text-orange-400" : "text-white"
+                              }`}
                           >
                             {isReceived ? "+" : isSent ? "-" : ""}
                             {parseInt(tx.amount).toLocaleString()}

@@ -14,7 +14,10 @@ import {
   Lock,
   Unlock,
   ExternalLink,
+  CheckCircle2,
+  Eye,
 } from "lucide-react";
+import { GhostfounderLoader } from "@/components/ui/ghostfounder-loader";
 
 interface GitHubRepo {
   id: number;
@@ -33,6 +36,11 @@ interface GitHubRepo {
   };
 }
 
+interface ConnectedProject {
+  id: string;
+  githubFullName: string;
+}
+
 export default function ConnectRepositoryPage() {
   const router = useRouter();
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
@@ -44,33 +52,42 @@ export default function ConnectRepositoryPage() {
   const [error, setError] = useState("");
   const [githubConnected, setGithubConnected] = useState(false);
   const [connectingRepoId, setConnectingRepoId] = useState<number | null>(null);
+  const [connectedProjects, setConnectedProjects] = useState<ConnectedProject[]>([]);
 
-  // Fetch repositories on mount
+  // Fetch repositories and connected projects on mount
   useEffect(() => {
-    const fetchRepos = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch("/api/github/repos");
-        const data = await response.json();
+        // Fetch repos and connected projects in parallel
+        const [reposResponse, projectsResponse] = await Promise.all([
+          fetch("/api/github/repos"),
+          fetch("/api/code-police/projects")
+        ]);
+
+        const reposData = await reposResponse.json();
+        const projectsData = await projectsResponse.json();
 
         console.log("[ConnectRepo] API Response:", {
-          status: response.status,
-          connected: data.connected,
-          repoCount: data.repos?.length || 0,
-          hasError: !!data.error,
-          message: data.message
+          status: reposResponse.status,
+          connected: reposData.connected,
+          repoCount: reposData.repos?.length || 0,
+          connectedCount: projectsData.projects?.length || 0,
+          hasError: !!reposData.error,
+          message: reposData.message
         });
 
-        if (!response.ok) {
-          throw new Error(data.error || data.message || "Failed to fetch repositories");
+        if (!reposResponse.ok) {
+          throw new Error(reposData.error || reposData.message || "Failed to fetch repositories");
         }
 
-        setRepos(data.repos || []);
-        setFilteredRepos(data.repos || []);
-        setGithubConnected(data.connected);
+        setRepos(reposData.repos || []);
+        setFilteredRepos(reposData.repos || []);
+        setGithubConnected(reposData.connected);
+        setConnectedProjects(projectsData.projects || []);
 
-        if (!data.connected) {
-          setError(data.message || "GitHub not connected. Please connect your GitHub account in Settings.");
-        } else if (data.repos && data.repos.length === 0) {
+        if (!reposData.connected) {
+          setError(reposData.message || "GitHub not connected. Please connect your GitHub account in Settings.");
+        } else if (reposData.repos && reposData.repos.length === 0) {
           setError("No repositories found. Make sure your GitHub account has repositories.");
         }
       } catch (err) {
@@ -81,7 +98,7 @@ export default function ConnectRepositoryPage() {
       }
     };
 
-    fetchRepos();
+    fetchData();
   }, []);
 
   // Filter repos based on search
@@ -186,7 +203,7 @@ export default function ConnectRepositoryPage() {
       {/* Loading State */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-red-400 animate-spin" />
+          <GhostfounderLoader size="lg" text="Loading repositories..." />
         </div>
       ) : repos.length === 0 ? (
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 text-center">
@@ -218,8 +235,8 @@ export default function ConnectRepositoryPage() {
               <div
                 key={repo.id}
                 className={`p-4 rounded-xl border transition-all ${selectedRepo?.id === repo.id
-                    ? "bg-red-500/10 border-red-500/30"
-                    : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
+                  ? "bg-red-500/10 border-red-500/30"
+                  : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-700"
                   }`}
               >
                 <div className="flex items-center justify-between">
@@ -260,23 +277,47 @@ export default function ConnectRepositoryPage() {
                     >
                       <ExternalLink className="w-4 h-4" />
                     </a>
-                    <button
-                      onClick={() => handleConnect(repo)}
-                      disabled={isConnecting}
-                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {connectingRepoId === repo.id ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Connecting...
-                        </>
-                      ) : (
-                        <>
-                          <Shield className="w-4 h-4" />
-                          Connect
-                        </>
-                      )}
-                    </button>
+                    {(() => {
+                      const connected = connectedProjects.find(
+                        (p) => p.githubFullName === repo.full_name
+                      );
+                      if (connected) {
+                        return (
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 text-green-400 text-sm font-medium rounded-lg">
+                              <CheckCircle2 className="w-4 h-4" />
+                              Connected
+                            </span>
+                            <Link
+                              href={`/dashboard/code-police/${connected.id}`}
+                              className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View
+                            </Link>
+                          </div>
+                        );
+                      }
+                      return (
+                        <button
+                          onClick={() => handleConnect(repo)}
+                          disabled={isConnecting}
+                          className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                        >
+                          {connectingRepoId === repo.id ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Connecting...
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="w-4 h-4" />
+                              Connect
+                            </>
+                          )}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
                 {repo.description && (

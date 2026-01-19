@@ -17,6 +17,7 @@ import {
   Trash2,
   GripVertical,
 } from "lucide-react";
+import { GhostfounderLoader } from "@/components/ui/ghostfounder-loader";
 
 interface Slide {
   id: string;
@@ -175,7 +176,7 @@ export default function PitchDeckDetailPage({ params }: { params: Promise<{ id: 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+        <GhostfounderLoader size="lg" text="Loading deck..." />
       </div>
     );
   }
@@ -232,8 +233,8 @@ export default function PitchDeckDetailPage({ params }: { params: Promise<{ id: 
                 setIsEditing(false);
               }}
               className={`w-full p-2 rounded-lg mb-2 transition-all ${currentSlideIndex === index
-                  ? "bg-violet-500/20 border border-violet-500/30"
-                  : "bg-zinc-800/50 hover:bg-zinc-800 border border-transparent"
+                ? "bg-violet-500/20 border border-violet-500/30"
+                : "bg-zinc-800/50 hover:bg-zinc-800 border border-transparent"
                 }`}
             >
               <div

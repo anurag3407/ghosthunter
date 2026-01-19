@@ -16,6 +16,7 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
+import { GhostfounderLoader } from "@/components/ui/ghostfounder-loader";
 
 /**
  * ============================================================================
@@ -75,7 +76,7 @@ export default function CodePolicePage() {
   if (loading) {
     return (
       <div className="p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 text-red-400 animate-spin" />
+        <GhostfounderLoader size="lg" text="Loading projects..." />
       </div>
     );
   }
@@ -110,8 +111,8 @@ export default function CodePolicePage() {
       ) : (
         <div className="grid gap-4">
           {projects.map((project) => (
-            <ProjectCard 
-              key={project.id} 
+            <ProjectCard
+              key={project.id}
               project={project}
               onDisconnect={fetchProjects}
             />
@@ -158,7 +159,7 @@ function ProjectCard({
   const handleDisconnect = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!showConfirm) {
       setShowConfirm(true);
       return;
@@ -204,8 +205,8 @@ function ProjectCard({
 
   const totalIssues = project.lastRun
     ? project.lastRun.issueCounts.critical +
-      project.lastRun.issueCounts.high +
-      project.lastRun.issueCounts.medium
+    project.lastRun.issueCounts.high +
+    project.lastRun.issueCounts.medium
     : 0;
 
   const formatDate = (dateString: string) => {
@@ -213,7 +214,7 @@ function ProjectCard({
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
+
     if (days === 0) return "Today";
     if (days === 1) return "Yesterday";
     if (days < 7) return `${days} days ago`;
@@ -278,7 +279,7 @@ function ProjectCard({
         ) : (
           <span className="text-sm text-zinc-500">No runs yet</span>
         )}
-        
+
         {/* Disconnect Button */}
         <div className="flex items-center gap-2">
           {showConfirm ? (
