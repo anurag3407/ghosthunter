@@ -119,7 +119,7 @@ export function StickyFooter({ className, ...props }: StickyFooterProps) {
                         {/* Copyright Footer */}
                         <div className="text-muted-foreground flex flex-col items-center justify-between gap-2 border-t border-border pt-4 text-sm md:flex-row relative z-10">
                             <p>© {new Date().getFullYear()} GhostFounder. All rights reserved.</p>
-                            <p>Designed with ❤️</p>
+                            <p>Developed by Anurag Mishra</p>
                         </div>
                     </div>
                 </div>
