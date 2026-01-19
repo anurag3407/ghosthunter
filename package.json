@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/validate-env.js && next build",
-    "build:netlify": "next build",
+    "build:netlify": "next build --webpack",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
@@ -87,7 +87,8 @@
     "use-image": "^1.1.4",
     "uuid": "^13.0.0",
     "zod": "^4.3.2",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.9",
+    "typescript": "5.9.3"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.5",
@@ -103,7 +104,6 @@
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
-    "hardhat": "^2.28.2",
-    "typescript": "5.9.3"
+    "hardhat": "^2.28.2"
   }
 }
