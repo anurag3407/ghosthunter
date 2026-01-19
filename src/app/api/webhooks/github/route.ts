@@ -253,6 +253,27 @@ async function handlePushEvent(
     return;
   }
 
+  // ========================================================================
+  // DEDUPLICATION CHECK - Prevent duplicate analysis of the same commit
+  // ========================================================================
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+  const existingAnalysis = await adminDb
+    .collection("analysis_runs")
+    .where("projectId", "==", project.id)
+    .where("commitSha", "==", commitSha)
+    .where("createdAt", ">=", fiveMinutesAgo)
+    .limit(1)
+    .get();
+
+  if (!existingAnalysis.empty) {
+    const existingRun = existingAnalysis.docs[0].data();
+    console.log("[Push Event] DUPLICATE DETECTED - Commit already analyzed recently");
+    console.log("[Push Event] Existing analysis ID:", existingRun.id, "Status:", existingRun.status);
+    console.log("[Push Event] Skipping duplicate analysis for commit:", commitSha.slice(0, 7));
+    return;
+  }
+
   // Create analysis run
   const analysisRef = adminDb.collection("analysis_runs").doc();
 
@@ -269,6 +290,7 @@ async function handlePushEvent(
     issueCounts: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
     createdAt: new Date(),
   });
+
 
   try {
     console.log("[Push Event] Fetching commit details...");

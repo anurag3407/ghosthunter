@@ -29,6 +29,7 @@ import {
   Eye,
   ChevronRight,
   Filter,
+  ShieldAlert,
 } from "lucide-react";
 import { GhostfounderLoader } from "@/components/ui/ghostfounder-loader";
 
@@ -248,6 +249,7 @@ function SettingsContent() {
             githubUsername={githubAccount?.username}
             isLoaded={isLoaded}
             onManageAccount={() => setShowAccountModal(true)}
+            userEmail={user?.primaryEmailAddress?.emailAddress}
           />
         )}
       </div>
@@ -685,19 +687,51 @@ function HistoryTab({
 // ============================================================================
 // ACCOUNT SETTINGS TAB
 // ============================================================================
+
+// Admin emails for client-side check
+const ADMIN_EMAILS = ["anuragmishra3407@gmail.com"];
+
 function AccountSettingsTab({
   isGithubConnected,
   githubUsername,
   isLoaded,
   onManageAccount,
+  userEmail,
 }: {
   isGithubConnected: boolean;
   githubUsername?: string;
   isLoaded: boolean;
   onManageAccount: () => void;
+  userEmail?: string;
 }) {
+  const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase());
+
   return (
     <div className="space-y-6">
+      {/* Admin Panel Button - Only visible to admins */}
+      {isAdmin && (
+        <section className="glass rounded-2xl p-6 border border-violet-500/30 bg-gradient-to-r from-violet-500/5 to-indigo-500/5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-violet-500/20">
+                <ShieldAlert className="w-5 h-5 text-violet-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Admin Panel</h2>
+                <p className="text-sm text-zinc-500">Manage users, projects, and system activities</p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/admin"
+              className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              Open Admin Panel
+            </Link>
+          </div>
+        </section>
+      )}
+
       {/* Profile Section */}
       <section className="glass rounded-2xl p-6">
         <div className="flex items-center gap-3 mb-6">
