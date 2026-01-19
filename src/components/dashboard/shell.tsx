@@ -131,6 +131,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
               width={32}
               height={32}
               className="rounded-lg group-hover:shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-shadow duration-300"
+              priority
+              unoptimized
             />
             <span className="text-base font-semibold bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">
               GhostFounder

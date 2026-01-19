@@ -50,6 +50,8 @@ export default function Header() {
             width={32}
             height={32}
             className="rounded-lg"
+            priority
+            unoptimized
           />
           <span className="text-base font-semibold text-white">
             GhostFounder
