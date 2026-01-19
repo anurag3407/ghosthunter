@@ -66,6 +66,7 @@ export async function getUserEmail(userId: string): Promise<UserEmailInfo> {
 
 /**
  * Store user email in Firestore for caching and offline access
+ * Also initializes usage tracking fields for SaaS limits
  */
 export async function syncUserEmailToFirestore(
     userId: string,
@@ -73,13 +74,33 @@ export async function syncUserEmailToFirestore(
     db: import("firebase-admin/firestore").Firestore
 ): Promise<void> {
     try {
-        await db.collection("users").doc(userId).set(
-            {
+        const userRef = db.collection("users").doc(userId);
+        const userDoc = await userRef.get();
+
+        if (!userDoc.exists) {
+            // New user - create with full usage data
+            await userRef.set({
                 email,
                 emailUpdatedAt: new Date(),
-            },
-            { merge: true }
-        );
+                plan: "free",
+                usage: {
+                    codePoliceProjects: 0,
+                    pushAnalyses: 0,
+                    fixWithPr: 0,
+                    pitchDecks: 0,
+                    databaseConnections: 0,
+                    databaseQueries: 0,
+                },
+                usageResetAt: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                createdAt: new Date(),
+            });
+        } else {
+            // Existing user - just update email
+            await userRef.update({
+                email,
+                emailUpdatedAt: new Date(),
+            });
+        }
     } catch (error) {
         console.error("[ClerkUtils] Error syncing email to Firestore:", error);
     }

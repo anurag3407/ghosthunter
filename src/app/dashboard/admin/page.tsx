@@ -19,6 +19,7 @@ import {
     TrendingUp,
     Calendar,
     ChevronRight,
+    Crown,
 } from "lucide-react";
 import { GhostfounderLoader } from "@/components/ui/ghostfounder-loader";
 
@@ -47,6 +48,7 @@ interface AdminUser {
     imageUrl: string;
     createdAt: number;
     lastSignInAt: number | null;
+    isPro?: boolean;
     stats: {
         projects: number;
         analyses: number;
@@ -174,6 +176,24 @@ export default function AdminPage() {
         }
     };
 
+    const toggleUserPro = async (userId: string, isPro: boolean) => {
+        try {
+            const res = await fetch(`/api/admin/users/${userId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ isPro }),
+            });
+            if (res.ok) {
+                // Update local state
+                setUsers((prev) =>
+                    prev.map((u) => (u.id === userId ? { ...u, isPro } : u))
+                );
+            }
+        } catch (error) {
+            console.error("Failed to toggle user pro status:", error);
+        }
+    };
+
     if (!isLoaded) {
         return (
             <div className="p-6 flex items-center justify-center min-h-screen">
@@ -259,6 +279,7 @@ export default function AdminPage() {
                                 searchQuery={searchQuery}
                                 onSearchChange={setSearchQuery}
                                 isLoading={isLoading}
+                                onTogglePro={toggleUserPro}
                             />
                         )}
                         {activeTab === "projects" && (
@@ -329,12 +350,22 @@ function UsersTab({
     searchQuery,
     onSearchChange,
     isLoading,
+    onTogglePro,
 }: {
     users: AdminUser[];
     searchQuery: string;
     onSearchChange: (query: string) => void;
     isLoading: boolean;
+    onTogglePro: (userId: string, isPro: boolean) => void;
 }) {
+    const [togglingUser, setTogglingUser] = useState<string | null>(null);
+
+    const handleToggle = async (userId: string, currentIsPro: boolean) => {
+        setTogglingUser(userId);
+        await onTogglePro(userId, !currentIsPro);
+        setTogglingUser(null);
+    };
+
     return (
         <div className="glass rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
@@ -376,7 +407,15 @@ function UsersTab({
                                 </div>
                             )}
                             <div className="flex-1 min-w-0">
-                                <p className="font-medium text-white truncate">{user.fullName}</p>
+                                <div className="flex items-center gap-2">
+                                    <p className="font-medium text-white truncate">{user.fullName}</p>
+                                    {user.isPro && (
+                                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">
+                                            <Crown className="w-3 h-3" />
+                                            Pro
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-xs text-zinc-500 truncate">{user.email}</p>
                             </div>
                             <div className="flex items-center gap-4 text-xs text-zinc-500">
@@ -393,7 +432,20 @@ function UsersTab({
                                     <p>Decks</p>
                                 </div>
                             </div>
-                            <ChevronRight className="w-4 h-4 text-zinc-600" />
+                            <button
+                                onClick={() => handleToggle(user.id, user.isPro || false)}
+                                disabled={togglingUser === user.id}
+                                className={`
+                                    px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                                    ${user.isPro
+                                        ? "bg-zinc-700 text-zinc-300 hover:bg-zinc-600"
+                                        : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+                                    }
+                                    ${togglingUser === user.id ? "opacity-50 cursor-wait" : ""}
+                                `}
+                            >
+                                {togglingUser === user.id ? "..." : user.isPro ? "Remove Pro" : "Make Pro"}
+                            </button>
                         </div>
                     ))}
                 </div>

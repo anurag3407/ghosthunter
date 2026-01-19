@@ -11,6 +11,7 @@ import { generateAndCreateFixPR } from "@/lib/agents/code-police/auto-fix";
 import { fetchCommit, fetchFileContent, postPRComment, formatPRComment, getDependentFiles } from "@/lib/agents/code-police/github";
 import { getUserEmail } from "@/lib/utils/clerk";
 import { notifyCodeAnalysisComplete, notifyAutoFixPRCreated } from "@/lib/notifications";
+import { checkLimit, incrementUsage } from "@/lib/usage";
 import type { CodeIssue, IssueSeverity, ProjectStatus } from "@/types";
 
 /**
@@ -274,6 +275,18 @@ async function handlePushEvent(
     return;
   }
 
+  // ========================================================================
+  // USAGE LIMIT CHECK - Check if user has remaining push analyses
+  // ========================================================================
+  const userId = project.userId as string;
+  const limitCheck = await checkLimit(userId, "pushAnalyses");
+  if (!limitCheck.allowed) {
+    console.log("[Push Event] LIMIT REACHED - User has used all push analyses");
+    console.log("[Push Event] Current:", limitCheck.current, "Limit:", limitCheck.limit);
+    console.log("[Push Event] Skipping analysis - upgrade required");
+    return;
+  }
+
   // Create analysis run
   const analysisRef = adminDb.collection("analysis_runs").doc();
 
@@ -473,6 +486,9 @@ async function handlePushEvent(
         email: commit.commit.author.email,
       },
     });
+
+    // Increment usage counter for push analyses
+    await incrementUsage(userId, "pushAnalyses");
 
     // Send email notification if configured
     const notificationPrefs = project.notificationPrefs as { emailOnPush?: boolean; additionalEmails?: string[] } | undefined;

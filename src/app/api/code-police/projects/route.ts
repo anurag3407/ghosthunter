@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { getUserEmail, syncUserEmailToFirestore } from "@/lib/utils/clerk";
+import { checkLimit, incrementUsage } from "@/lib/usage";
 
 /**
  * GET /api/code-police/projects
@@ -105,6 +106,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
 
+    // Check usage limit for free users
+    const limitCheck = await checkLimit(userId, "codePoliceProjects");
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: "Project limit reached",
+          message: `Free tier allows ${limitCheck.limit} Code Police project(s). Upgrade to Pro for unlimited projects.`,
+          limit: limitCheck.limit,
+          current: limitCheck.current,
+          upgradeRequired: true,
+        },
+        { status: 403 }
+      );
+    }
+
     // Check if project already exists
     const existingProject = await adminDb
       .collection("projects")
@@ -179,6 +195,9 @@ export async function POST(request: NextRequest) {
     };
 
     await projectRef.set(project);
+
+    // Increment usage counter
+    await incrementUsage(userId, "codePoliceProjects");
 
     return NextResponse.json({
       project,

@@ -10,6 +10,7 @@ import {
 import { generateQueryResponseCached, type HistoryItem } from "@/lib/agents/database/agent";
 import { decrypt } from "@/lib/agents/database/encryption";
 import { executeQuery, formatQueryResults } from "@/lib/agents/database/query-executor";
+import { checkLimit, incrementUsage } from "@/lib/usage";
 
 /**
  * ============================================================================
@@ -89,6 +90,21 @@ export async function POST(request: NextRequest) {
     const adminDb = getAdminDb();
     if (!adminDb) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+    }
+
+    // Check usage limit for free users
+    const limitCheck = await checkLimit(userId, "databaseQueries");
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: "Database query limit reached",
+          message: `Free tier allows ${limitCheck.limit} database queries per month. Upgrade to Pro for unlimited.`,
+          limit: limitCheck.limit,
+          current: limitCheck.current,
+          upgradeRequired: true,
+        },
+        { status: 403 }
+      );
     }
 
     // Get connection details
@@ -214,6 +230,9 @@ export async function POST(request: NextRequest) {
       .collection("database_connections")
       .doc(connectionId)
       .update({ lastUsedAt: new Date() });
+
+    // Increment usage counter for database queries
+    await incrementUsage(userId, "databaseQueries");
 
     return NextResponse.json({
       message: assistantMessage,

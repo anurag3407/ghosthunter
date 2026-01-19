@@ -41,12 +41,17 @@ export async function GET(request: NextRequest) {
         // Get project counts from Firestore for each user
         const usersWithStats = await Promise.all(
             clerkUsers.data.map(async (user) => {
-                const [projectsCount, analysesCount, decksCount, equityCount] = await Promise.all([
+                const [projectsCount, analysesCount, decksCount, equityCount, userDoc] = await Promise.all([
                     adminDb.collection("projects").where("userId", "==", user.id).count().get(),
                     adminDb.collection("analysis_runs").where("userId", "==", user.id).count().get(),
                     adminDb.collection("pitch-decks").where("userId", "==", user.id).count().get(),
                     adminDb.collection("equity_projects").where("userId", "==", user.id).count().get(),
+                    adminDb.collection("users").doc(user.id).get(),
                 ]);
+
+                // Get isPro from Firestore (handle both old plan format and new isPro format)
+                const userData = userDoc.data();
+                const isPro = userData?.isPro === true || userData?.plan === "pro";
 
                 return {
                     id: user.id,
@@ -55,6 +60,7 @@ export async function GET(request: NextRequest) {
                     imageUrl: user.imageUrl,
                     createdAt: user.createdAt,
                     lastSignInAt: user.lastSignInAt,
+                    isPro,
                     stats: {
                         projects: projectsCount.data().count,
                         analyses: analysesCount.data().count,

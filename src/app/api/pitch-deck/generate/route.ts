@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { generatePitchDeck } from "@/lib/agents/pitch-deck/generator";
 import { notifyPitchDeckGenerated } from "@/lib/notifications";
+import { checkLimit, incrementUsage } from "@/lib/usage";
 
 const LOG_PREFIX = "[PitchDeck:Generate]";
 
@@ -40,6 +41,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     console.log(`${LOG_PREFIX} [${requestId}] Using userId: ${userId}`);
+
+    // Check usage limit for free users
+    const limitCheck = await checkLimit(userId, "pitchDecks");
+    if (!limitCheck.allowed) {
+      console.log(`${LOG_PREFIX} [${requestId}] ❌ Pitch deck limit reached`);
+      return NextResponse.json(
+        {
+          error: "Pitch deck limit reached",
+          message: `Free tier allows ${limitCheck.limit} pitch deck(s) per month. Upgrade to Pro for unlimited.`,
+          limit: limitCheck.limit,
+          current: limitCheck.current,
+          upgradeRequired: true,
+        },
+        { status: 403 }
+      );
+    }
 
     // Parse request body
     console.log(`${LOG_PREFIX} [${requestId}] Parsing request body...`);
@@ -174,6 +191,9 @@ export async function POST(request: NextRequest) {
       deck.id,
       deck.slides.length
     );
+
+    // Increment usage counter for pitch decks
+    await incrementUsage(userId, "pitchDecks");
 
     return NextResponse.json({
       deckId: deck.id,

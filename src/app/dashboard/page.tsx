@@ -168,6 +168,13 @@ export default function DashboardPage() {
   const { user } = useUser();
   const firstName = user?.firstName || "there";
 
+  // Initialize user in Firestore on first dashboard load
+  useSWR(
+    user ? "/api/user/init" : null,
+    (url: string) => fetch(url, { method: "POST" }).then((res) => res.json()),
+    { revalidateOnFocus: false, revalidateOnReconnect: false }
+  );
+
   // Fetch real-time stats
   const { data, isLoading } = useSWR<{ stats: DashboardStats }>(
     "/api/dashboard/stats",

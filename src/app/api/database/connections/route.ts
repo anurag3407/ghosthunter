@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { encrypt, encryptCredentials } from "@/lib/agents/database/encryption";
 import { detectDatabaseType } from "@/lib/agents/database/universal-schema";
+import { checkLimit, incrementUsage } from "@/lib/usage";
 
 /**
  * ============================================================================
@@ -86,6 +87,21 @@ export async function POST(request: NextRequest) {
     const adminDb = getAdminDb();
     if (!adminDb) {
       return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+    }
+
+    // Check usage limit for free users
+    const limitCheck = await checkLimit(userId, "databaseConnections");
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: "Database connection limit reached",
+          message: `Free tier allows ${limitCheck.limit} database connection(s). Upgrade to Pro for unlimited.`,
+          limit: limitCheck.limit,
+          current: limitCheck.current,
+          upgradeRequired: true,
+        },
+        { status: 403 }
+      );
     }
 
     let connectionData: Record<string, unknown>;
@@ -172,6 +188,9 @@ export async function POST(request: NextRequest) {
       id: connectionRef.id,
       ...connectionData,
     });
+
+    // Increment usage counter for database connections
+    await incrementUsage(userId, "databaseConnections");
 
     return NextResponse.json({
       connection: {
