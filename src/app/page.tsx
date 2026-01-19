@@ -46,10 +46,10 @@ const TextHoverEffect = nextDynamic(
   }
 );
 
-const CallToAction = nextDynamic(
-  () => import("@/components/ui/cta").then(mod => ({ default: mod.CallToAction })),
+const PricingWithChart = nextDynamic(
+  () => import("@/components/ui/pricing-with-chart").then(mod => ({ default: mod.PricingWithChart })),
   {
-    loading: () => <SectionSkeleton height="h-[200px]" />,
+    loading: () => <SectionSkeleton height="h-[400px]" />,
     ssr: true,
   }
 );
@@ -122,10 +122,10 @@ export default function LandingPage() {
         <AnimatedTestimonialsDemo />
       </Suspense>
 
-      {/* CTA Section */}
+      {/* Pricing Section */}
       <section className="py-20 px-4">
-        <Suspense fallback={<SectionSkeleton height="h-[200px]" />}>
-          <CallToAction />
+        <Suspense fallback={<SectionSkeleton height="h-[400px]" />}>
+          <PricingWithChart />
         </Suspense>
       </section>
 
