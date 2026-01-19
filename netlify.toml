@@ -5,8 +5,8 @@
 # Docs: https://docs.netlify.com/configure-builds/file-based-configuration/
 
 [build]
-  # Build command
-  command = "npm run build:netlify"
+  # Build command - clear cache for fresh build
+  command = "rm -rf .next && npm ci && npm run build:netlify"
   # Output directory for Next.js
   publish = ".next"
 
