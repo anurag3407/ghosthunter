@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
   },
   // Optimize image handling
   images: {
+    unoptimized: true, // Required for Netlify static exports
     remotePatterns: [
       {
         protocol: 'https',
