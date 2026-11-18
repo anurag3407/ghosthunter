@@ -704,9 +704,6 @@ function HistoryTab({
 // ACCOUNT SETTINGS TAB
 // ============================================================================
 
-// Admin emails for client-side check
-const ADMIN_EMAILS = ["anuragmishra3407@gmail.com"];
-
 function AccountSettingsTab({
   isGithubConnected,
   githubUsername,
@@ -720,7 +717,15 @@ function AccountSettingsTab({
   onManageAccount: () => void;
   userEmail?: string;
 }) {
-  const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase());
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    fetch("/api/admin/check")
+      .then((res) => res.json())
+      .then((data) => setIsAdmin(Boolean(data?.isAdmin)))
+      .catch(() => setIsAdmin(false));
+  }, [isLoaded]);
 
   return (
     <div className="space-y-6">
@@ -880,7 +885,10 @@ function AccountSettingsTab({
               Perfect for getting started with GhostFounder
             </p>
           </div>
-          <button className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors">
+          <button 
+            onClick={() => window.open("mailto:billing@ghostfounder.com?subject=Upgrade%20to%20Pro%20Request", "_blank")}
+            className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors"
+          >
             Upgrade
           </button>
         </div>
@@ -896,9 +904,12 @@ function AccountSettingsTab({
         <div className="flex items-center justify-between py-3">
           <div>
             <p className="font-medium text-white">Delete Account</p>
-            <p className="text-sm text-zinc-500">Permanently delete your account and all data</p>
+            <p className="text-sm text-zinc-500">Permanently delete your account and all data via Clerk Security</p>
           </div>
-          <button className="px-4 py-2 text-sm font-medium text-red-400 hover:text-white bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-transparent rounded-lg transition-colors">
+          <button 
+            onClick={onManageAccount}
+            className="px-4 py-2 text-sm font-medium text-red-400 hover:text-white bg-red-500/10 hover:bg-red-500 border border-red-500/20 hover:border-transparent rounded-lg transition-colors"
+          >
             Delete Account
           </button>
         </div>

@@ -70,41 +70,12 @@ export async function POST(request: NextRequest) {
     // Generate export based on format
     switch (format) {
       case "pdf":
-        // In a real implementation, we would:
-        // 1. Render each slide to HTML
-        // 2. Use puppeteer or similar to convert to PDF
-        // 3. Return the PDF buffer
-        
-        // For now, return a placeholder response
-        return NextResponse.json({
-          success: true,
-          message: "PDF export - implementation pending",
-          downloadUrl: null,
-          // In production, this would be a signed URL to download the PDF
-        });
-        
       case "pptx":
-        // In a real implementation, we would:
-        // 1. Use pptxgenjs to create a PowerPoint file
-        // 2. Add each slide with proper styling
-        // 3. Return the PPTX buffer
-        
-        return NextResponse.json({
-          success: true,
-          message: "PPTX export - implementation pending",
-          downloadUrl: null,
-        });
-        
       case "png":
-        // In a real implementation, we would:
-        // 1. Render each slide to canvas
-        // 2. Export as PNG images
-        // 3. Return as ZIP or individual URLs
-        
         return NextResponse.json({
           success: true,
-          message: "PNG export - implementation pending",
-          downloadUrls: [],
+          deck,
+          message: "Client-side export active. Use studio canvas exporter for instant rendering.",
         });
         
       default:

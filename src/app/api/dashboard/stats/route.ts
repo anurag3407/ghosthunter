@@ -94,7 +94,7 @@ export async function GET() {
       dbConversationsSnapshot,
     ] = await Promise.all([
       safeQuery("analysis_runs"),
-      safeQuery("pitchDecks"),
+      safeQuery("pitch-decks"),
       safeQuery("equity_projects"),
       safeQuery("database_connections", "lastUsedAt"),
       safeQuery("database_conversations", "updatedAt"),

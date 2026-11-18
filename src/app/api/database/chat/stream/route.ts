@@ -221,6 +221,8 @@ export async function POST(request: NextRequest) {
             const creds = JSON.parse(decrypt(connection.encryptedCredentials));
             if (connection.type === "mongodb") {
                 connectionString = `mongodb://${creds.username}:${encodeURIComponent(creds.password)}@${creds.host}:${creds.port}/${creds.database}`;
+            } else if (connection.type === "mysql") {
+                connectionString = `mysql://${creds.username}:${encodeURIComponent(creds.password)}@${creds.host}:${creds.port}/${creds.database}`;
             } else {
                 connectionString = `postgresql://${creds.username}:${encodeURIComponent(creds.password)}@${creds.host}:${creds.port}/${creds.database}`;
             }
@@ -257,15 +259,15 @@ export async function POST(request: NextRequest) {
         const stream = new ReadableStream({
             async start(controller) {
                 try {
-                    const apiKey = process.env.GEMINI_API_KEY;
+                    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
                     if (!apiKey) {
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "GEMINI_API_KEY not configured" })}\n\n`));
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Gemini API key not configured (set GEMINI_API_KEY or GOOGLE_API_KEY)" })}\n\n`));
                         controller.close();
                         return;
                     }
 
                     const model = new ChatGoogleGenerativeAI({
-                        model: "gemini-2.5-flash-lite",
+                        model: process.env.GEMINI_MODEL || "gemini-2.0-flash-lite",
                         apiKey,
                         temperature: 0.1,
                         maxOutputTokens: 2048,

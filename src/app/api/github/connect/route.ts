@@ -32,7 +32,10 @@ export async function POST(request: NextRequest) {
     let githubToken: string | null = null;
 
     try {
-      const tokens = await clerk.users.getUserOauthAccessToken(userId, "github");
+      let tokens = await clerk.users.getUserOauthAccessToken(userId, "oauth_github");
+      if (!tokens.data || tokens.data.length === 0) {
+        tokens = await clerk.users.getUserOauthAccessToken(userId, "github");
+      }
       if (tokens.data && tokens.data.length > 0) {
         githubToken = tokens.data[0].token;
       }

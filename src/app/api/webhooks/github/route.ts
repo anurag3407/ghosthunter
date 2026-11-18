@@ -74,7 +74,14 @@ function verifyWebhookSignature(
   const hmac = crypto.createHmac("sha256", secret);
   const digest = `sha256=${hmac.update(payload).digest("hex")}`;
 
-  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
+  const digestBuffer = Buffer.from(digest);
+  const signatureBuffer = Buffer.from(signature);
+
+  if (digestBuffer.length !== signatureBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(digestBuffer, signatureBuffer);
 }
 
 export async function POST(request: NextRequest) {
@@ -153,11 +160,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Project stopped' }, { status: 404 });
     }
 
-    // Verify signature
+    // Verify signature (enforce secret matching unless explicitly bypassed in local test mode)
     const webhookSecret = project.webhookSecret;
-    if (webhookSecret && !verifyWebhookSignature(rawBody, signature, webhookSecret)) {
-      console.error("[GitHub Webhook] Invalid signature for project:", project.id);
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    const skipVerification = process.env.NODE_ENV === "development" && process.env.SKIP_WEBHOOK_VERIFICATION === "true";
+    if (!skipVerification) {
+      if (!webhookSecret || !signature || !verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+        console.error("[GitHub Webhook] Invalid or missing signature for project:", project.id);
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
     }
 
     console.log("[GitHub Webhook] Signature verified successfully");
@@ -448,22 +458,23 @@ async function handlePushEvent(
       return cleaned;
     };
 
-    // Store in SUBCOLLECTION: analysis_runs/{runId}/issues
+    // Store in SUBCOLLECTION: analysis_runs/{runId}/issues (chunked to respect 500-op limit)
     if (fullIssues.length > 0) {
-      const issuesBatch = adminDb.batch();
-      for (const issue of fullIssues) {
-        // FIX: Store in subcollection, not top-level collection
-        const issueRef = analysisRef.collection("issues").doc(issue.id);
-        // Sanitize to remove undefined values
-        const sanitizedIssue = sanitizeForFirestore({
-          ...issue,
-          createdAt: new Date(),
-          // Ensure optional fields have defaults
-          endLine: issue.endLine ?? issue.line,
-        });
-        issuesBatch.set(issueRef, sanitizedIssue);
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < fullIssues.length; i += CHUNK_SIZE) {
+        const chunk = fullIssues.slice(i, i + CHUNK_SIZE);
+        const issuesBatch = adminDb.batch();
+        for (const issue of chunk) {
+          const issueRef = analysisRef.collection("issues").doc(issue.id);
+          const sanitizedIssue = sanitizeForFirestore({
+            ...issue,
+            createdAt: new Date(),
+            endLine: issue.endLine ?? issue.line,
+          });
+          issuesBatch.set(issueRef, sanitizedIssue);
+        }
+        await issuesBatch.commit();
       }
-      await issuesBatch.commit();
       console.log("[Push Event] Stored", fullIssues.length, "issues in subcollection");
     }
 
@@ -734,17 +745,21 @@ async function handlePREvent(
       isMuted: false,
     }));
 
-    // Store issues in SUBCOLLECTION (matching GET API)
+    // Store issues in SUBCOLLECTION (matching GET API, chunked to respect 500-op limit)
     if (fullIssues.length > 0) {
-      const issuesBatch = adminDb.batch();
-      for (const issue of fullIssues) {
-        const issueRef = analysisRef.collection("issues").doc(issue.id);
-        issuesBatch.set(issueRef, {
-          ...issue,
-          createdAt: new Date(),
-        });
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < fullIssues.length; i += CHUNK_SIZE) {
+        const chunk = fullIssues.slice(i, i + CHUNK_SIZE);
+        const issuesBatch = adminDb.batch();
+        for (const issue of chunk) {
+          const issueRef = analysisRef.collection("issues").doc(issue.id);
+          issuesBatch.set(issueRef, {
+            ...issue,
+            createdAt: new Date(),
+          });
+        }
+        await issuesBatch.commit();
       }
-      await issuesBatch.commit();
       console.log("[PR Event] Stored", fullIssues.length, "issues in subcollection");
     }
 

@@ -198,15 +198,20 @@ export async function POST(request: NextRequest) {
         }));
 
         if (fullIssues.length > 0) {
-            const issuesBatch = adminDb.batch();
-            for (const issue of fullIssues) {
-                const issueRef = analysisRef.collection("issues").doc(issue.id);
-                issuesBatch.set(issueRef, {
-                    ...issue,
-                    createdAt: new Date(),
-                });
+            // Write in chunks of 400 to respect Firestore 500-operation batch limits
+            const CHUNK_SIZE = 400;
+            for (let i = 0; i < fullIssues.length; i += CHUNK_SIZE) {
+                const chunk = fullIssues.slice(i, i + CHUNK_SIZE);
+                const issuesBatch = adminDb.batch();
+                for (const issue of chunk) {
+                    const issueRef = analysisRef.collection("issues").doc(issue.id);
+                    issuesBatch.set(issueRef, {
+                        ...issue,
+                        createdAt: new Date(),
+                    });
+                }
+                await issuesBatch.commit();
             }
-            await issuesBatch.commit();
         }
 
         // Generate summary

@@ -72,7 +72,7 @@ Respond in this exact JSON format:
 export async function generateAIInsights(
     metrics: MetricsSummary
 ): Promise<AIInsights> {
-    const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
     if (!apiKey) {
         console.warn('[Analytics AI] No API key found, returning fallback insights');

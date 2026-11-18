@@ -54,7 +54,8 @@ export async function POST(request: NextRequest) {
     } else if (type === "supabase") {
       builtConnectionString = `postgresql://${username}:${encodeURIComponent(password)}@${host}:${port}/${database}?sslmode=require`;
     } else if (type === "postgresql") {
-      builtConnectionString = `postgresql://${username}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+      const isCloud = host.includes("neon.tech") || host.includes("railway") || host.includes("render.com") || host.includes("amazonaws.com");
+      builtConnectionString = `postgresql://${username}:${encodeURIComponent(password)}@${host}:${port}/${database}${isCloud ? "?sslmode=require" : ""}`;
     } else if (type === "mysql") {
       // MySQL still needs special handling
       try {

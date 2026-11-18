@@ -151,8 +151,13 @@ export async function POST(request: NextRequest) {
       let builtConnectionString: string;
       if (type === "mongodb") {
         builtConnectionString = `mongodb://${username}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+      } else if (type === "mysql") {
+        builtConnectionString = `mysql://${username}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+      } else if (type === "supabase") {
+        builtConnectionString = `postgresql://${username}:${encodeURIComponent(password)}@${host}:${port}/${database}?sslmode=require`;
       } else {
-        builtConnectionString = `postgresql://${username}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+        const isCloud = host.includes("neon.tech") || host.includes("railway") || host.includes("render.com") || host.includes("amazonaws.com");
+        builtConnectionString = `postgresql://${username}:${encodeURIComponent(password)}@${host}:${port}/${database}${isCloud ? "?sslmode=require" : ""}`;
       }
 
       // Encrypt the connection string

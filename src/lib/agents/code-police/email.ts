@@ -20,14 +20,14 @@ let transporter: nodemailer.Transporter | null = null;
  */
 function getTransporter(): nodemailer.Transporter {
   if (!transporter) {
-    const host = process.env.EMAIL_HOST;
+    const host = process.env.EMAIL_HOST || (process.env.GMAIL_USER ? "smtp.gmail.com" : undefined);
     const port = parseInt(process.env.EMAIL_PORT || "587");
-    const user = process.env.EMAIL_USER;
-    const pass = process.env.EMAIL_PASS;
+    const user = process.env.EMAIL_USER || process.env.GMAIL_USER;
+    const pass = process.env.EMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
 
     if (!host || !user || !pass) {
       throw new Error(
-        "Email configuration missing. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS"
+        "Email configuration missing. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS (or GMAIL_USER, GMAIL_APP_PASSWORD, or RESEND_API_KEY)"
       );
     }
 
@@ -89,10 +89,29 @@ export async function sendAnalysisReport(input: {
   };
   dashboardUrl?: string;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const transport = getTransporter();
-  const fromAddress = process.env.EMAIL_USER || "noreply@ghostfounder.com";
-
   const html = generateReportHtml(input);
+
+  // If RESEND_API_KEY is configured and no direct SMTP is provided, send with Resend
+  if (process.env.RESEND_API_KEY && (!process.env.EMAIL_HOST && !process.env.GMAIL_USER)) {
+    try {
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const from = process.env.RESEND_FROM || "GhostFounder Code Police <onboarding@resend.dev>";
+      const result = await resend.emails.send({
+        from,
+        to: input.to,
+        subject: getEmailSubject(input.run, input.issues),
+        html,
+      });
+      return { success: true, messageId: result.data?.id };
+    } catch (err) {
+      console.error("[Email:Resend] Failed:", err);
+      return { success: false, error: err instanceof Error ? err.message : "Resend failed" };
+    }
+  }
+
+  const transport = getTransporter();
+  const fromAddress = process.env.EMAIL_USER || process.env.GMAIL_USER || "noreply@ghostfounder.com";
 
   try {
     const result = await transport.sendMail({

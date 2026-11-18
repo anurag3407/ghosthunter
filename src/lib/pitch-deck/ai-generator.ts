@@ -34,6 +34,20 @@ import { getDefaultTheme } from "./themes";
 
 const LOG_PREFIX = "[PitchDeck:AIGenerator]";
 
+function getGeminiApiKey(): string {
+  const key = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!key) {
+    throw new Error(
+      "Gemini API key is not configured. Please set GEMINI_API_KEY or GOOGLE_API_KEY in your environment variables."
+    );
+  }
+  return key;
+}
+
+function getGeminiModel(): string {
+  return process.env.GEMINI_MODEL || "gemini-2.0-flash-lite";
+}
+
 // ============================================================================
 // OUTPUT SCHEMAS
 // ============================================================================
@@ -449,15 +463,11 @@ export async function generateDeckFromSources(
   console.log(`${LOG_PREFIX} [${genId}] Starting enhanced deck generation`);
   console.log(`${LOG_PREFIX} [${genId}] Style: ${request.style}, Tone: ${request.tone}`);
 
-  // Validate API key
-  if (!process.env.GOOGLE_AI_API_KEY) {
-    throw new Error("GOOGLE_AI_API_KEY is not configured");
-  }
-
-  // Initialize model
+  // Validate API key and initialize model
+  const apiKey = getGeminiApiKey();
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash-lite",
-    apiKey: process.env.GOOGLE_AI_API_KEY,
+    model: getGeminiModel(),
+    apiKey,
     temperature: 0.7,
   });
 
@@ -608,13 +618,10 @@ export async function improveText(
 ): Promise<string> {
   console.log(`${LOG_PREFIX} Improving text: action=${action}, slideType=${slideType}`);
 
-  if (!process.env.GOOGLE_AI_API_KEY) {
-    throw new Error("GOOGLE_AI_API_KEY is not configured");
-  }
-
+  const apiKey = getGeminiApiKey();
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash-lite",
-    apiKey: process.env.GOOGLE_AI_API_KEY,
+    model: getGeminiModel(),
+    apiKey,
     temperature: 0.7,
   });
 
@@ -710,13 +717,10 @@ export async function checkDeckHealth(
 ): Promise<HealthCheckResult> {
   console.log(`${LOG_PREFIX} Running health check for deck: ${deck.id}`);
 
-  if (!process.env.GOOGLE_AI_API_KEY) {
-    throw new Error("GOOGLE_AI_API_KEY is not configured");
-  }
-
+  const apiKey = getGeminiApiKey();
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash-lite",
-    apiKey: process.env.GOOGLE_AI_API_KEY,
+    model: getGeminiModel(),
+    apiKey,
     temperature: 0.3, // Lower for more consistent analysis
   });
 

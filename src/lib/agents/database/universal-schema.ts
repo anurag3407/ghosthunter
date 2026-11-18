@@ -21,7 +21,7 @@ export interface CachedSchemaData {
   cachedAt: string;
 }
 
-export type DetectedDatabaseType = "postgres" | "mongodb" | "supabase";
+export type DetectedDatabaseType = "postgres" | "mongodb" | "supabase" | "mysql";
 
 export interface UniversalSchema {
   type: DetectedDatabaseType;
@@ -55,6 +55,11 @@ export function detectDatabaseType(connectionString: string): DetectedDatabaseTy
     return "mongodb";
   }
 
+  // MySQL detection
+  if (trimmed.startsWith("mysql://")) {
+    return "mysql";
+  }
+
   // Supabase detection (has supabase.co in the host)
   if (trimmed.includes("supabase.co") || trimmed.includes("supabase.com")) {
     return "supabase";
@@ -80,8 +85,73 @@ export async function getUniversalSchema(
 
   if (type === "mongodb") {
     return getMongoDBSchema(connectionString);
+  } else if (type === "mysql") {
+    return getMySQLSchema(connectionString);
   } else {
     return getPostgresSchema(connectionString, type);
+  }
+}
+
+/**
+ * Fetch MySQL schema with sample data
+ */
+async function getMySQLSchema(connectionString: string): Promise<UniversalSchema> {
+  console.log("[MySQL Schema] Starting schema fetch with sample data...");
+  const mysql = await import("mysql2/promise");
+  const connection = await mysql.createConnection(connectionString);
+
+  try {
+    const [rows] = await connection.query(`
+      SELECT 
+        TABLE_NAME as table_name,
+        COLUMN_NAME as column_name,
+        DATA_TYPE as data_type,
+        IS_NULLABLE as is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+      ORDER BY table_name, ordinal_position
+    `) as unknown as [Array<{ table_name: string; column_name: string; data_type: string; is_nullable: string }>];
+
+    const tableMap = new Map<string, FieldInfo[]>();
+    for (const row of rows || []) {
+      if (!tableMap.has(row.table_name)) {
+        tableMap.set(row.table_name, []);
+      }
+      tableMap.get(row.table_name)!.push({
+        name: row.column_name,
+        type: row.data_type,
+        nullable: row.is_nullable === "YES",
+      });
+    }
+
+    const tables: TableInfo[] = [];
+    for (const [tableName, fields] of tableMap.entries()) {
+      try {
+        const [sampleRows] = await connection.query(`SELECT * FROM \`${tableName}\` LIMIT 5`) as unknown as [Record<string, unknown>[]];
+        const [countRows] = await connection.query(`SELECT COUNT(*) as cnt FROM \`${tableName}\``) as unknown as [Array<{ cnt: number }>];
+        tables.push({
+          name: tableName,
+          fields,
+          sampleDocuments: sampleRows || [],
+          documentCount: countRows?.[0]?.cnt || 0,
+        });
+      } catch {
+        tables.push({ name: tableName, fields });
+      }
+    }
+
+    const schema = minifySchema(tables, "postgres");
+    const sampleDataContext = generateSampleDataContext(tables, "postgres");
+
+    return {
+      type: "mysql",
+      schema,
+      tables,
+      sampleDataContext,
+      updatedAt: new Date().toISOString(),
+    };
+  } finally {
+    await connection.end().catch(() => {});
   }
 }
 
@@ -94,9 +164,17 @@ async function getPostgresSchema(
 ): Promise<UniversalSchema> {
   console.log(`[Postgres Schema] Starting schema fetch with sample data for ${type}...`);
 
+  const needsSSL = type === "supabase" || 
+    connectionString.includes("sslmode=require") || 
+    connectionString.includes("ssl=true") ||
+    connectionString.includes("neon.tech") ||
+    connectionString.includes("railway") ||
+    connectionString.includes("render.com") ||
+    connectionString.includes("amazonaws.com");
+
   const pool = new Pool({
     connectionString,
-    ssl: type === "supabase" ? { rejectUnauthorized: false } : false,
+    ssl: needsSSL ? { rejectUnauthorized: false } : false,
     max: 1,
     connectionTimeoutMillis: 10000,
   });
@@ -512,10 +590,23 @@ export async function testConnection(connectionString: string): Promise<{
       const dbName = extractMongoDbName(connectionString);
       await client.db(dbName).command({ ping: 1 });
       await client.close();
+    } else if (type === "mysql") {
+      const mysql = await import("mysql2/promise");
+      const connection = await mysql.createConnection(connectionString);
+      await connection.query("SELECT 1");
+      await connection.end();
     } else {
+      const needsSSL = type === "supabase" || 
+        connectionString.includes("sslmode=require") || 
+        connectionString.includes("ssl=true") ||
+        connectionString.includes("neon.tech") ||
+        connectionString.includes("railway") ||
+        connectionString.includes("render.com") ||
+        connectionString.includes("amazonaws.com");
+
       const pool = new Pool({
         connectionString,
-        ssl: type === "supabase" ? { rejectUnauthorized: false } : false,
+        ssl: needsSSL ? { rejectUnauthorized: false } : false,
         max: 1,
         connectionTimeoutMillis: 10000,
       });

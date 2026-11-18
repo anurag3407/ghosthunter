@@ -84,9 +84,6 @@ const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
     { id: "activities", label: "Activities", icon: Activity },
 ];
 
-// Admin emails for client-side check
-const ADMIN_EMAILS = ["anuragmishra3407@gmail.com"];
-
 export default function AdminPage() {
     const { user, isLoaded } = useUser();
     const router = useRouter();
@@ -98,16 +95,24 @@ export default function AdminPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [projectFilter, setProjectFilter] = useState<"all" | "code-police" | "pitch-deck" | "equity">("all");
+    const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
-    // Check admin access
-    const userEmail = user?.emailAddresses[0]?.emailAddress;
-    const isAdmin = userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase());
-
+    // Verify admin access dynamically against the server API
     useEffect(() => {
-        if (isLoaded && !isAdmin) {
-            router.push("/dashboard/settings");
-        }
-    }, [isLoaded, isAdmin, router]);
+        if (!isLoaded) return;
+        fetch("/api/admin/check")
+            .then((res) => res.json())
+            .then((data) => {
+                setIsAdmin(Boolean(data.isAdmin));
+                if (!data.isAdmin) {
+                    router.push("/dashboard/settings");
+                }
+            })
+            .catch(() => {
+                setIsAdmin(false);
+                router.push("/dashboard/settings");
+            });
+    }, [isLoaded, router]);
 
     // Fetch data based on active tab
     useEffect(() => {

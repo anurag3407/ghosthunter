@@ -66,6 +66,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify project exists and belongs to the authenticated user
+    const projectDoc = await adminDb.collection("projects").doc(projectId).get();
+    if (!projectDoc.exists) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    const projectData = projectDoc.data();
+    if (projectData?.userId !== userId) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+    const defaultBranch = projectData?.defaultBranch || "main";
+
     // Get user's GitHub token from Clerk OAuth (primary) or Firestore (fallback)
     let githubToken: string | null = null;
 
@@ -115,7 +126,7 @@ export async function POST(request: NextRequest) {
       userId,
       projectId,
       commitSha: commitSha || "latest",
-      branch: "main",
+      branch: defaultBranch,
       triggerType: "push",
       status: "running",
       issueCounts: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
@@ -444,6 +455,17 @@ export async function GET(request: NextRequest) {
         { status: 503 }
       );
     }
+
+    // Verify project exists and belongs to the authenticated user
+    const projectDoc = await adminDb.collection("projects").doc(projectId).get();
+    if (!projectDoc.exists) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    const projectData = projectDoc.data();
+    if (projectData?.userId !== userId) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+    const defaultBranch = projectData?.defaultBranch || "main";
 
     // Fetch analysis runs for project
     const runsSnapshot = await adminDb

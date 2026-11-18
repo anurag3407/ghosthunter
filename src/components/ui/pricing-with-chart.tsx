@@ -137,8 +137,8 @@ export function PricingWithChart() {
                     <h4 className="text-lg font-semibold text-white">Need Enterprise Features?</h4>
                     <p className="text-sm text-zinc-400">Custom integrations, unlimited team members, dedicated support</p>
                 </div>
-                <Button variant="outline" className="border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/10">
-                    <Link href="/contact">Contact Sales</Link>
+                <Button variant="outline" className="border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/10" asChild>
+                    <a href="mailto:support@ghostfounder.com">Contact Sales</a>
                 </Button>
             </div>
         </div>

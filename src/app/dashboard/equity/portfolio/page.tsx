@@ -476,7 +476,7 @@ export default function PortfolioPage() {
                         </div>
                       </div>
                       <a
-                        href={`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS}`}
+                        href={`https://sepolia.etherscan.io/address/${process.env.NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 text-zinc-500 hover:text-white transition-colors"

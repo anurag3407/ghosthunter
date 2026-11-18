@@ -5,8 +5,8 @@
  * Admin access control and utilities
  */
 
-// Admin emails - can be overridden via environment variable
-const DEFAULT_ADMIN_EMAILS = ["anuragmishra3407@gmail.com"];
+// Admin emails configured via environment variable ADMIN_EMAILS (comma-separated)
+const DEFAULT_ADMIN_EMAILS: string[] = [];
 
 /**
  * Check if a user email has admin access

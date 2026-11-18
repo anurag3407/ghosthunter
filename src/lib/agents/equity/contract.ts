@@ -35,9 +35,9 @@ export interface TransferResult {
  * Get the contract address from environment
  */
 function getContractAddress(): string {
-  const address = process.env.NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS;
+  const address = process.env.NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS;
   if (!address) {
-    throw new Error("NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS is not configured");
+    throw new Error("NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS (or NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS) is not configured");
   }
   return address;
 }

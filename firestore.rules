@@ -59,8 +59,14 @@ service cloud.firestore {
     }
     
     // ========================================================================
-    // PITCH DECKS
+    // PITCH DECKS (supports both standard 'pitch-decks' and legacy 'pitchDecks')
     // ========================================================================
+    match /pitch-decks/{deckId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
     match /pitchDecks/{deckId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
@@ -69,7 +75,7 @@ service cloud.firestore {
     }
     
     // ========================================================================
-    // EQUITY PROJECTS
+    // EQUITY PROJECTS & TRANSACTIONS
     // ========================================================================
     match /equity_projects/{projectId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
@@ -77,10 +83,36 @@ service cloud.firestore {
       allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
+
+    match /equity_transactions/{txId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if false; // Transactions are immutable
+      allow delete: if false;
+    }
     
     // ========================================================================
-    // CODE POLICE PROJECTS
+    // CODE POLICE PROJECTS & RUNS
     // ========================================================================
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /analysis_runs/{runId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      match /issues/{issueId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+
     match /code_police_projects/{projectId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
@@ -94,6 +126,16 @@ service cloud.firestore {
         allow update: if false; // Analyses are immutable
         allow delete: if isAuthenticated() && get(/databases/$(database)/documents/code_police_projects/$(projectId)).data.userId == request.auth.uid;
       }
+    }
+
+    // ========================================================================
+    // NOTIFICATIONS
+    // ========================================================================
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
     
     // ========================================================================

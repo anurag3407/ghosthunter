@@ -35,10 +35,19 @@ export async function GET(request: Request) {
     let query: FirebaseFirestore.Query = adminDb.collection("equity_transactions");
 
     if (projectId) {
-      // When projectId is provided, filter by projectId only
+      // Verify ownership of project
+      const projectDoc = await adminDb.collection("equity_projects").doc(projectId).get();
+      if (!projectDoc.exists) {
+        return NextResponse.json({ error: "Project not found" }, { status: 404 });
+      }
+      if (projectDoc.data()?.userId !== userId) {
+        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      }
       query = query.where("projectId", "==", projectId);
+    } else {
+      // Only fetch transactions belonging to the authenticated user
+      query = query.where("userId", "==", userId);
     }
-    // Note: If no projectId, we fetch all and filter by userId in memory
 
     const snapshot = await query.get();
 

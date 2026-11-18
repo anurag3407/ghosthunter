@@ -53,7 +53,7 @@ function getGeminiModel(temperature: number = 0.1) {
     }
 
     return new ChatGoogleGenerativeAI({
-        model: "gemini-2.5-flash-lite",
+        model: process.env.GEMINI_MODEL || "gemini-2.0-flash-lite",
         apiKey,
         temperature,
         maxRetries: 5,
@@ -482,6 +482,9 @@ function createFallbackFixes(input: {
             }
         }
 
+        // Only allow automatic application if there is a concrete code suggestion
+        const hasRealCodeFix = Boolean(issue.suggestedFix && !issue.suggestedFix.startsWith("//"));
+
         fixes.push({
             issueId: issue.id,
             filePath: input.filePath,
@@ -490,8 +493,8 @@ function createFallbackFixes(input: {
             originalCode,
             fixedCode,
             explanation,
-            confidence: "medium",
-            canAutoApply: true,
+            confidence: hasRealCodeFix ? "medium" : "low",
+            canAutoApply: hasRealCodeFix,
         });
     }
 
@@ -543,8 +546,11 @@ export function applyFix(fileContent: string, fix: Fix): string {
  * Applies fixes in reverse line order to preserve line numbers
  */
 export function applyMultipleFixes(fileContent: string, fixes: Fix[]): string {
+    // Only apply fixes that are approved or safe for automatic application
+    const applicableFixes = fixes.filter(f => f.canAutoApply !== false);
+
     // Sort fixes by startLine descending - apply from bottom to top
-    const sortedFixes = [...fixes].sort((a, b) => (b.startLine || 0) - (a.startLine || 0));
+    const sortedFixes = [...applicableFixes].sort((a, b) => (b.startLine || 0) - (a.startLine || 0));
 
     let newContent = fileContent;
     let appliedCount = 0;

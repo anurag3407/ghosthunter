@@ -45,7 +45,7 @@
 - **Email Reports**: Professional HTML reports with actionable insights
 - **GitHub Integration**: Webhook-based real-time automation
 
-📖 [Full Documentation](./CODE_POLICE_README.md) | [Quick Reference](./CODE_POLICE_QUICK_REFERENCE.md)
+📖 [Full Documentation](./docs/CODE_POLICE.md)
 
 ### 📊 Pitch Deck Studio
 > AI-Powered Presentation Generator
@@ -57,7 +57,7 @@
 - **Export Options**: PDF and image export capabilities
 - **Gap Analysis**: Identifies missing slides and content improvements
 
-📖 [Full Documentation](./PITCH_DECK_README.md)
+📖 [Full Documentation](./docs/PITCH_DECK.md)
 
 ### 💰 Equity Distribution
 > Blockchain-Based Token Management
@@ -68,7 +68,7 @@
 - **Real-Time Tracking**: Monitor balances and ownership percentages
 - **Cap Table**: Transparent, on-chain ownership records
 
-📖 [Full Documentation](./EQUITY_DISTRIBUTION_README.md)
+📖 [Full Documentation](./docs/EQUITY_DISTRIBUTION.md)
 
 ### 💾 Database Agent
 > Natural Language Database Interface
@@ -79,7 +79,7 @@
 - **Query Explanation**: Understand what each query does
 - **Safe Execution**: Read-only queries with validation
 
-📖 [Full Documentation](./DATABASE_AGENT_README.md) | [Quick Reference](./DATABASE_AGENT_QUICK_REFERENCE.md)
+📖 [Full Documentation](./docs/DATABASE_AGENT.md)
 
 ---
 

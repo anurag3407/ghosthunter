@@ -30,15 +30,26 @@ const optionalEnvVars = {
   FIREBASE_CLIENT_EMAIL: 'Firebase service account email',
   FIREBASE_PRIVATE_KEY: 'Firebase service account private key',
   
-  // AI Services
-  GOOGLE_API_KEY: 'Google Gemini API key',
+  // AI Services (accepts either GEMINI_API_KEY or GOOGLE_API_KEY)
+  GOOGLE_API_KEY: 'Google Gemini API key (or GEMINI_API_KEY)',
   
-  // Email
-  RESEND_API_KEY: 'Resend email API key',
+  // Email (SMTP or Resend)
+  EMAIL_HOST: 'SMTP host (or RESEND_API_KEY for transactional emails)',
+  EMAIL_USER: 'SMTP user / email address',
+  EMAIL_PASS: 'SMTP password / app password',
+  
+  // Encryption
+  CREDENTIALS_ENCRYPTION_KEY: 'AES encryption key for database connection strings',
+
+  // Webhooks
+  CLERK_WEBHOOK_SECRET: 'Clerk webhook signing secret (from Clerk Dashboard -> Webhooks)',
   
   // Blockchain
   NEXT_PUBLIC_SEPOLIA_RPC_URL: 'Sepolia RPC URL',
-  NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS: 'Equity token contract address',
+  NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS: 'Equity token contract address (or NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS)',
+
+  // Admin
+  ADMIN_EMAILS: 'Comma-separated admin email addresses',
 };
 
 function validateEnvironment() {
@@ -53,12 +64,13 @@ function validateEnvironment() {
     return;
   }
   
-  // Auto-skip validation in Railway/CI environments unless explicitly enabled
+  // Auto-skip validation in Railway/Netlify/CI environments unless explicitly enabled
   const isRailway = process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID;
+  const isNetlify = process.env.NETLIFY === 'true' || process.env.NETLIFY;
   const isCI = process.env.CI === 'true';
   
-  if ((isRailway || isCI) && process.env.REQUIRE_ENV_VALIDATION !== 'true') {
-    console.log('⏭️  Skipping environment validation in CI/Railway build\n');
+  if ((isRailway || isNetlify || isCI) && process.env.REQUIRE_ENV_VALIDATION !== 'true') {
+    console.log('⏭️  Skipping environment validation in CI/Railway/Netlify build\n');
     console.log('💡 Environment variables will be validated at runtime\n');
     console.log('   To enforce validation in CI, set REQUIRE_ENV_VALIDATION=true\n');
     return;
@@ -71,11 +83,24 @@ function validateEnvironment() {
     }
   }
   
-  // Check optional variables
-  for (const [key, description] of Object.entries(optionalEnvVars)) {
-    if (!process.env[key]) {
-      warnings.push({ key, description });
-    }
+  // Check optional variables with alias awareness
+  const hasAIKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+  if (!hasAIKey) {
+    warnings.push({ key: 'GOOGLE_API_KEY / GEMINI_API_KEY', description: 'Required for Code Police, Pitch Deck, and Database Agent' });
+  }
+
+  const hasEquityContract = process.env.NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS;
+  if (!hasEquityContract) {
+    warnings.push({ key: 'NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS', description: 'Required for blockchain equity distribution on Sepolia' });
+  }
+
+  if (!process.env.CREDENTIALS_ENCRYPTION_KEY) {
+    warnings.push({ key: 'CREDENTIALS_ENCRYPTION_KEY', description: 'Required to encrypt/decrypt database agent credentials' });
+  }
+
+  const hasEmail = (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) || process.env.RESEND_API_KEY;
+  if (!hasEmail) {
+    warnings.push({ key: 'EMAIL_HOST, EMAIL_USER, EMAIL_PASS', description: 'Required for Code Police email reports' });
   }
   
   // Report results

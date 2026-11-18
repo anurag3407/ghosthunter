@@ -489,17 +489,18 @@ export async function getDependentFiles(
 
   // Build search query to find imports of this file
   const searchQueries = [
-    `import+from+"${fileName}"`, // ES6 imports
+    `import from "${fileName}"`, // ES6 imports
     `require("${fileName}")`,    // CommonJS
-    `from+"${targetFilePath.replace(/\.(ts|tsx|js|jsx)$/, '')}"`, // Full path imports
+    `from "${targetFilePath.replace(/\.(ts|tsx|js|jsx)$/, '')}"`, // Full path imports
   ];
 
   const dependentFiles: Array<{ path: string; snippet: string }> = [];
 
   for (const query of searchQueries.slice(0, 1)) { // Limit API calls
     try {
+      const searchQuery = `${query} repo:${owner}/${repo}`;
       const response = await fetch(
-        `${GITHUB_API_BASE}/search/code?q=${encodeURIComponent(query)}+repo:${owner}/${repo}&per_page=5`,
+        `${GITHUB_API_BASE}/search/code?q=${encodeURIComponent(searchQuery)}&per_page=5`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,

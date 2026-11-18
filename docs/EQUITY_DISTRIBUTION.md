@@ -159,7 +159,7 @@ GET    /api/equity/transactions          # Transaction history
 1. **Private Keys**: Never stored in database
 2. **MetaMask**: All transactions require user signature
 3. **Testnet**: Currently deployed on Sepolia (testnet)
-4. **Smart Contract**: Audited OpenZeppelin base
+4. **Smart Contract**: ERC-20 compliant with reentrancy protection and percentage transfer logic
 
 ### Network Configuration
 

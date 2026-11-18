@@ -346,18 +346,88 @@ export default function PitchDeckStudioPage() {
     
     setIsExporting(true);
     try {
-      const response = await fetch("/api/pitch-deck/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deckId: deck.id, format }),
-      });
-      
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+      if (format === "pdf") {
+        const { jsPDF } = await import("jspdf");
+        const doc = new jsPDF({
+          orientation: "landscape",
+          unit: "pt",
+          format: [960, 540],
+        });
+
+        const slides = deck.slides || [];
+        slides.forEach((slide, index) => {
+          if (index > 0) doc.addPage([960, 540], "landscape");
+
+          // Draw dark slide background
+          doc.setFillColor(15, 23, 42); // slate-900
+          doc.rect(0, 0, 960, 540, "F");
+
+          // Draw top accent bar
+          doc.setFillColor(99, 102, 241); // indigo-500
+          doc.rect(0, 0, 960, 6, "F");
+
+          // Slide Title
+          doc.setTextColor(248, 250, 252);
+          doc.setFontSize(24);
+          doc.setFont("helvetica", "bold");
+          const slideTitle = slide.title || `Slide ${index + 1}`;
+          doc.text(slideTitle, 60, 70);
+
+          let currentY = 120;
+
+          // Render slide elements
+          (slide.elements || []).forEach((el: any) => {
+            if (el.type === "heading" || el.type === "text") {
+              const textContent = el.content || "";
+              if (!textContent) return;
+              doc.setFontSize(el.type === "heading" ? 18 : 13);
+              doc.setTextColor(el.type === "heading" ? 226 : 203, el.type === "heading" ? 232 : 213, el.type === "heading" ? 240 : 225);
+              doc.setFont("helvetica", el.type === "heading" ? "bold" : "normal");
+              const lines = doc.splitTextToSize(textContent, 840);
+              doc.text(lines, 60, currentY);
+              currentY += (lines.length * 20) + 12;
+            } else if (el.type === "bullet-list") {
+              const items = el.items || [];
+              doc.setFontSize(13);
+              doc.setTextColor(203, 213, 225);
+              doc.setFont("helvetica", "normal");
+              items.forEach((item: any) => {
+                const itemText = typeof item === "string" ? item : (item.text || "");
+                if (!itemText) return;
+                doc.text(`• ${itemText}`, 75, currentY);
+                currentY += 20;
+              });
+              currentY += 10;
+            } else if (el.type === "metric") {
+              const value = el.value || "";
+              const label = el.label || "";
+              doc.setFontSize(22);
+              doc.setTextColor(56, 189, 248);
+              doc.setFont("helvetica", "bold");
+              doc.text(value, 60, currentY);
+              currentY += 22;
+              doc.setFontSize(11);
+              doc.setTextColor(148, 163, 184);
+              doc.setFont("helvetica", "normal");
+              doc.text(label, 60, currentY);
+              currentY += 24;
+            }
+          });
+
+          // Footer
+          doc.setFontSize(9);
+          doc.setTextColor(100, 116, 139);
+          doc.text(`${deck.title || "GhostFounder Pitch Deck"} • Slide ${index + 1} of ${slides.length}`, 60, 515);
+        });
+
+        doc.save(`${deck.title || "pitch-deck"}.pdf`);
+      } else {
+        // Fallback or JSON export
+        const jsonBlob = new Blob([JSON.stringify(deck, null, 2)], { type: "application/json" });
+        const url = window.URL.createObjectURL(jsonBlob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${deck.title}.${format}`;
+        a.download = `${deck.title || "pitch-deck"}.${format === "png" ? "json" : format}`;
         a.click();
         window.URL.revokeObjectURL(url);
       }

@@ -150,6 +150,8 @@ export async function POST(request: NextRequest) {
       const creds = JSON.parse(decrypt(connection.encryptedCredentials));
       if (connection.type === "mongodb") {
         connectionString = `mongodb://${creds.username}:${encodeURIComponent(creds.password)}@${creds.host}:${creds.port}/${creds.database}`;
+      } else if (connection.type === "mysql") {
+        connectionString = `mysql://${creds.username}:${encodeURIComponent(creds.password)}@${creds.host}:${creds.port}/${creds.database}`;
       } else {
         connectionString = `postgresql://${creds.username}:${encodeURIComponent(creds.password)}@${creds.host}:${creds.port}/${creds.database}`;
       }

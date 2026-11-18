@@ -115,15 +115,18 @@ export async function generatePitchDeck(
   console.log(`${LOG_PREFIX} [${genId}] Input README length: ${readme.length} characters`);
   console.log(`${LOG_PREFIX} [${genId}] Additional instructions: ${additionalInstructions ? `"${additionalInstructions.substring(0, 100)}..."` : "none"}`);
 
+  const geminiApiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const geminiModel = process.env.GEMINI_MODEL || "gemini-2.0-flash-lite";
+
   // Initialize model
   console.log(`${LOG_PREFIX} [${genId}] Initializing Gemini model...`);
-  console.log(`${LOG_PREFIX} [${genId}]   - Model: gemini-2.5-flash-lite`);
+  console.log(`${LOG_PREFIX} [${genId}]   - Model: ${geminiModel}`);
   console.log(`${LOG_PREFIX} [${genId}]   - Temperature: 0.7`);
-  console.log(`${LOG_PREFIX} [${genId}]   - API Key: ${process.env.GOOGLE_AI_API_KEY ? "configured (hidden)" : "NOT SET"}`);
+  console.log(`${LOG_PREFIX} [${genId}]   - API Key: ${geminiApiKey ? "configured (hidden)" : "NOT SET"}`);
 
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash-lite",
-    apiKey: process.env.GOOGLE_AI_API_KEY,
+    model: geminiModel,
+    apiKey: geminiApiKey,
     temperature: 0.7,
   });
   console.log(`${LOG_PREFIX} [${genId}] ✓ Model initialized`);

@@ -135,7 +135,7 @@ export default function NewEquityProjectPage() {
         body: JSON.stringify({
           name: selectedRepo.name,
           symbol: selectedRepo.name.substring(0, 5).toUpperCase(),
-          contractAddress: process.env.NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS,
+          contractAddress: process.env.NEXT_PUBLIC_EQUITY_CONTRACT_ADDRESS || process.env.NEXT_PUBLIC_EQUITY_TOKEN_ADDRESS,
           totalSupply: "1000000",
           githubRepoId: selectedRepo.id,
           githubRepoFullName: selectedRepo.full_name,

@@ -54,14 +54,16 @@ const BLOCKED_PATTERNS = {
  * Get configured Gemini model
  */
 function getModel() {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured");
+    throw new Error(
+      "Gemini API key is not configured. Please set GEMINI_API_KEY or GOOGLE_API_KEY in your environment variables."
+    );
   }
 
   return new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash-lite",
+    model: process.env.GEMINI_MODEL || "gemini-2.0-flash-lite",
     apiKey,
     temperature: 0.1,
     maxOutputTokens: 2048,

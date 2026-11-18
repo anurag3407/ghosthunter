@@ -28,7 +28,10 @@ export async function GET() {
 
     // Try to get the OAuth token to verify it's still valid
     try {
-      const tokens = await clerk.users.getUserOauthAccessToken(userId, "github");
+      let tokens = await clerk.users.getUserOauthAccessToken(userId, "oauth_github");
+      if (!tokens.data || tokens.data.length === 0) {
+        tokens = await clerk.users.getUserOauthAccessToken(userId, "github");
+      }
       if (!tokens.data || tokens.data.length === 0) {
         return NextResponse.json({ connected: false });
       }

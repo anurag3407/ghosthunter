@@ -22,10 +22,12 @@ interface QueryGenerationResult {
  * Get configured Gemini model
  */
 function getGeminiModel() {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured");
+    throw new Error(
+      "Gemini API key is not configured. Please set GEMINI_API_KEY or GOOGLE_API_KEY in your environment variables."
+    );
   }
 
   return new ChatGoogleGenerativeAI({

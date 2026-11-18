@@ -209,6 +209,44 @@ function serializeDocument(doc: Record<string, unknown>): Record<string, unknown
 }
 
 /**
+ * Execute a MySQL query
+ */
+async function executeMysqlQuery(
+  connectionString: string,
+  query: string
+): Promise<QueryResult> {
+  const mysql = await import("mysql2/promise");
+  const startTime = Date.now();
+  let connection;
+
+  try {
+    connection = await mysql.createConnection(connectionString);
+    const limitedQuery = addLimitIfNeeded(query, 100);
+    const [rows] = await connection.query(limitedQuery) as unknown as [Record<string, unknown>[]];
+    const executionTime = Date.now() - startTime;
+    await connection.end();
+
+    return {
+      success: true,
+      data: Array.isArray(rows) ? rows : [rows as Record<string, unknown>],
+      rowCount: Array.isArray(rows) ? rows.length : 1,
+      executionTime,
+    };
+  } catch (error) {
+    if (connection) {
+      await connection.end().catch(() => {});
+    }
+    return {
+      success: false,
+      data: [],
+      rowCount: 0,
+      executionTime: Date.now() - startTime,
+      error: error instanceof Error ? error.message : "Query execution failed",
+    };
+  }
+}
+
+/**
  * Execute a PostgreSQL/Supabase query
  */
 async function executePostgresQuery(
@@ -216,9 +254,17 @@ async function executePostgresQuery(
   query: string,
   type: "postgres" | "supabase"
 ): Promise<QueryResult> {
+  const needsSSL = type === "supabase" || 
+    connectionString.includes("sslmode=require") || 
+    connectionString.includes("ssl=true") ||
+    connectionString.includes("neon.tech") ||
+    connectionString.includes("railway") ||
+    connectionString.includes("render.com") ||
+    connectionString.includes("amazonaws.com");
+
   const pool = new Pool({
     connectionString,
-    ssl: type === "supabase" ? { rejectUnauthorized: false } : false,
+    ssl: needsSSL ? { rejectUnauthorized: false } : false,
     max: 1,
     connectionTimeoutMillis: 10000,
   });
@@ -288,6 +334,8 @@ export async function executeQuery(
 
   if (type === "mongodb") {
     return executeMongoQuery(connectionString, query);
+  } else if (type === "mysql") {
+    return executeMysqlQuery(connectionString, query);
   } else {
     return executePostgresQuery(connectionString, query, type);
   }
